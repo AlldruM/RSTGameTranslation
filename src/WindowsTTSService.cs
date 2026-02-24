@@ -732,8 +732,7 @@ namespace RSTGameTranslation
                 // Create a WaveOut device with low latency settings
                 _currentPlayer = new WaveOutEvent
                 {
-                    DesiredLatency = 100, // Reduce latency to 100ms (default is 300ms)
-                    Volume = ConfigManager.Instance.GetTtsVolume()
+                    DesiredLatency = 100 // Reduce latency to 100ms (default is 300ms)
                 };
                 
                 // Set up playback stopped event

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -18,6 +18,27 @@ using FontFamily = System.Windows.Media.FontFamily;
 
 namespace RSTGameTranslation
 {
+    public struct TranslationAreaInfo
+    {
+        public Rect Bounds { get; set; }
+        public int ScreenIndex { get; set; }
+        public double DpiScaleX { get; set; }
+        public double DpiScaleY { get; set; }
+        
+        public TranslationAreaInfo(Rect bounds, int screenIndex, double dpiScaleX, double dpiScaleY)
+        {
+            Bounds = bounds;
+            ScreenIndex = screenIndex;
+            DpiScaleX = dpiScaleX;
+            DpiScaleY = dpiScaleY;
+        }
+        
+        public double X => Bounds.X;
+        public double Y => Bounds.Y;
+        public double Width => Bounds.Width;
+        public double Height => Bounds.Height;
+    }
+    
     public class TextObject
     {
         // Properties
@@ -137,7 +158,10 @@ namespace RSTGameTranslation
 
             if (Height > 0)
             {
-                Border.MaxHeight = Height;
+                // Set MinHeight to ensure background covers original area
+                Border.MinHeight = Height;
+                // Allow Border to grow taller if text wraps to multiple lines
+                Border.MaxHeight = double.PositiveInfinity;
             }
 
             // Add the text block to the border
@@ -199,7 +223,8 @@ namespace RSTGameTranslation
 
                 if (Height > 0)
                 {
-                    Border.MaxHeight = Height;
+                    Border.MinHeight = Height;
+                    Border.MaxHeight = double.PositiveInfinity;
                 }
                 if(ConfigManager.Instance.IsLanguageFontOverrideEnabled())
                 {
@@ -279,7 +304,6 @@ namespace RSTGameTranslation
                 
                 int maxIterations = 8;
                 double lastDiff = double.MaxValue;
-                bool needsMoreHeight = false;
                 bool fitWidth = true;
 
                 for (int i = 0; i < maxIterations; i++)
@@ -288,11 +312,10 @@ namespace RSTGameTranslation
                     textBlock.Measure(new Size(Width * 0.95, Double.PositiveInfinity));
 
                     double minRequiredHeight = Height;
-                    needsMoreHeight = false;
-                    
+
                     if (textBlock.DesiredSize.Width >= Width * 0.9)
                     {
-                        needsMoreHeight = true;
+                        _ = true; // Width too large, will adjust
                     }
 
                     double heightDiff = Math.Abs(textBlock.DesiredSize.Height - minRequiredHeight);
@@ -327,17 +350,9 @@ namespace RSTGameTranslation
                     }
                 }
 
-                // Adjust border height logic (giữ nguyên)
-                if (needsMoreHeight && fitWidth)
-                {
-                    double requiredHeight = Math.Max(Height * 2, textBlock.DesiredSize.Height + 10);
-                    Border.MaxHeight = requiredHeight;
-                    textBlock.VerticalAlignment = VerticalAlignment.Top;
-                }
-                else if (fitWidth)
-                {
-                    Border.MaxHeight = Math.Max(Height, textBlock.DesiredSize.Height + 5);
-                }
+                // Adjust border height logic - Border will auto-expand due to MinHeight and Infinity MaxHeight
+                // Text will stretch to fill Border height
+                textBlock.VerticalAlignment = VerticalAlignment.Stretch;
 
                 // Finalize
                 double finalSize = Math.Max(minSize, Math.Min(maxSize, currentSize));
@@ -507,14 +522,6 @@ namespace RSTGameTranslation
                             else if (ttsService == "Google Cloud TTS")
                             {
                                 success = await GoogleTTSService.Instance.SpeakText(text);
-                            }
-                            else if (ttsService == "Windows TTS")
-                            {
-                                success = await WindowsTTSService.Instance.SpeakText(text);
-                            }
-                            else if (ttsService == "Local API")
-                            {
-                                success = await LocalTtsService.Instance.SpeakText(text);
                             }
                             else
                             {

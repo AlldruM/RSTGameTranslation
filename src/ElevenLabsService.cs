@@ -258,7 +258,7 @@ namespace RSTGameTranslation
                 _isPlayingAudio = true;
                 
                 // Create a WaveOut device
-                _currentPlayer = new WaveOutEvent { Volume = ConfigManager.Instance.GetTtsVolume() };
+                _currentPlayer = new WaveOutEvent();
                 
                 // Set up playback stopped event
                 _currentPlayer.PlaybackStopped += (sender, args) =>

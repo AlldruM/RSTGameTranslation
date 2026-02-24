@@ -34,7 +34,6 @@ namespace RSTGameTranslation
         public const string GEMINI_API_KEYS = "gemini_api_keys";
         public const string CUSTOM_API_KEYS = "custom_api_keys";
         public const string GROQ_API_KEYS = "groq_api_keys";
-        public const string GROK_API_KEYS = "grok_api_keys";
         public const string CHATGPT_API_KEYS = "chatgpt_api_keys";
         public const string MISTRAL_API_KEYS = "mistral_api_keys";
         public const string GOOGLE_TRANSLATE_API_KEYS = "google_translate_api_keys";
@@ -65,6 +64,7 @@ namespace RSTGameTranslation
         public const string HOTKEY_AUDIO_SERVICE = "hotkey_audio_service";
         public const string HOTKEY_SWAP_LANGUAGES = "hotkey_swap_languages";
         public const string HOTKEY_RETRY_TRANSLATION = "hotkey_retry_translation";
+        public const string HOTKEY_TOGGLE_EXCLUDE_REGIONS = "hotkey_toggle_exclude_regions";
 
         // Config keys
         public const string GEMINI_API_KEY = "gemini_api_key";
@@ -76,8 +76,6 @@ namespace RSTGameTranslation
         public const string MISTRAL_MODEL = "mistral_model";
         public const string GROQ_API_KEY = "groq_api_key";
         public const string GROQ_MODEL = "groq_model";
-        public const string GROK_API_KEY = "grok_api_key";
-        public const string GROK_MODEL = "grok_model";
         public const string TRANSLATION_SERVICE = "translation_service";
         public const string OCR_METHOD = "ocr_method";
         public const string OLLAMA_URL = "ollama_url";
@@ -90,11 +88,9 @@ namespace RSTGameTranslation
         public const string CHATGPT_MODEL = "chatgpt_model";
         public const string AUDIO_PROCESSING_MODEL = "audio_processing_model";
         public const string WHISPER_RUNTIME = "whisper_runtime"; // cpu, cuda, vulkan
-        public const string AUDIO_CAPTURE_DEVICE = "audio_capture_device"; // speaker loopback device name
-        public const string AUDIO_CAPTURE_MODE = "audio_capture_mode"; // "loopback" or "microphone"
-        public const string AUDIO_MICROPHONE_DEVICE = "audio_microphone_device"; // microphone device name
         public const string FORCE_CURSOR_VISIBLE = "force_cursor_visible";
         public const string AUTO_SIZE_TEXT_BLOCKS = "auto_size_text_blocks";
+        public const string DARK_MODE = "dark_mode";
         public const string GOOGLE_TRANSLATE_API_KEY = "google_translate_api_key";
         // Google Translate settings
         public const string GOOGLE_TRANSLATE_USE_CLOUD_API = "google_translate_use_cloud_api";
@@ -139,21 +135,11 @@ namespace RSTGameTranslation
         public const string GOOGLE_TTS_API_KEY = "google_tts_api_key";
         public const string GOOGLE_TTS_VOICE = "google_tts_voice";
         public const string WINDOWS_TTS_VOICE = "windows_tts_voice";
-        public const string LOCAL_TTS_URL = "local_tts_url";
-        public const string LOCAL_TTS_VOICE = "local_tts_voice";
-        public const string LOCAL_TTS_MODE = "local_tts_mode";           // Pretrained | VoiceClone
-        public const string LOCAL_TTS_MAIN_CHAR_NAME = "local_tts_main_char_name";
-        public const string LOCAL_TTS_MAIN_CHAR_WAV = "local_tts_main_char_wav";
-        public const string LOCAL_TTS_MAIN_CHAR_TXT = "local_tts_main_char_txt";
-        public const string LOCAL_TTS_MALE_VOICES = "local_tts_male_voices";   // comma-separated base names
-        public const string LOCAL_TTS_FEMALE_VOICES = "local_tts_female_voices";
-        public const string LOCAL_TTS_CHARACTER_GENDERS = "local_tts_character_genders"; // "Name:male,Name2:female,Main:main"
-        public const string TTS_VOLUME = "tts_volume";
         public const string EXCLUDE_CHARACTER_NAME = "exclude_character_name";
 
-        // Local Silero STT configuration keys
-        public const string LOCAL_STT_URL = "local_stt_url";        // e.g. http://127.0.0.1:8001
-        public const string LOCAL_STT_ENABLED = "true"; // true to use local Silero STT
+        // Exclude regions configuration keys
+        public const string EXCLUDE_REGIONS = "exclude_regions";
+        public const string SHOW_EXCLUDE_REGIONS = "show_exclude_regions";
 
         // ChatBox configuration keys
         public const string CHATBOX_FONT_FAMILY = "chatbox_font_family";
@@ -179,6 +165,7 @@ namespace RSTGameTranslation
         public const string MAX_BUFFER_SAMPLES = "MaxBufferSamples";
         public const string WHISPER_THREAD_COUNT = "whisper_thread_count";
         public const string AUTO_CLEAR_CHAT_HISTORY = "auto_clear_chat_history";
+        public const string AUTO_CLEAR_CHAT_TIMEOUT = "auto_clear_chat_timeout";
 
         public const string TEXTSIMILAR_THRESHOLD = "textsimilar_threshold";
 
@@ -195,6 +182,7 @@ namespace RSTGameTranslation
         public const string OVERLAY_BACKGROUND_COLOR = "OverlayBackgroundColor";
         public const string OVERLAY_TEXT_COLOR = "OverlayTextColor";
         public const string IS_AUTO_SET_OVERLAY_BACKGROUND = "IsAutoSetOverlayBackground";
+        public const string AUTO_MERGE_OVERLAPPING_TEXT = "AutoMergeOverlappingText";
 
         // Constants for screen selection
         private const string SELECTED_SCREEN_INDEX = "SelectedScreenIndex";
@@ -373,17 +361,17 @@ namespace RSTGameTranslation
             _mistralConfigFilePath = Path.Combine(appDirectory, "mistral_config.txt");
             _googleTranslateConfigFilePath = Path.Combine(appDirectory, "google_translate_config.txt");
 
-            Console.WriteLine($"Config file path: {_configFilePath}");
-            Console.WriteLine($"Profile folder path: {_profileFolderPath}");
-            Console.WriteLine($"AudioProcessingModels folder path: {_audioProcessingModelFolderPath}");
-            Console.WriteLine($"Gemini config file path: {_geminiConfigFilePath}");
-            Console.WriteLine($"Custom API config file path: {_customApiConfigFilePath}");
-            Console.WriteLine($"Groq config file path: {_groqConfigFilePath}");
-            Console.WriteLine($"Ollama config file path: {_ollamaConfigFilePath}");
-            Console.WriteLine($"LMStudio config file path: {_lmstudioConfigFilePath}");
-            Console.WriteLine($"ChatGPT config file path: {_chatgptConfigFilePath}");
-            Console.WriteLine($"Mistral config file path: {_mistralConfigFilePath}");
-            Console.WriteLine($"Google Translate config file path: {_googleTranslateConfigFilePath}");
+            // Console.WriteLine($"Config file path: {_configFilePath}");
+            // Console.WriteLine($"Profile folder path: {_profileFolderPath}");
+            // Console.WriteLine($"AudioProcessingModels folder path: {_audioProcessingModelFolderPath}");
+            // Console.WriteLine($"Gemini config file path: {_geminiConfigFilePath}");
+            // Console.WriteLine($"Custom API config file path: {_customApiConfigFilePath}");
+            // Console.WriteLine($"Groq config file path: {_groqConfigFilePath}");
+            // Console.WriteLine($"Ollama config file path: {_ollamaConfigFilePath}");
+            // Console.WriteLine($"LMStudio config file path: {_lmstudioConfigFilePath}");
+            // Console.WriteLine($"ChatGPT config file path: {_chatgptConfigFilePath}");
+            // Console.WriteLine($"Mistral config file path: {_mistralConfigFilePath}");
+            // Console.WriteLine($"Google Translate config file path: {_googleTranslateConfigFilePath}");
 
             // Load main config values
             LoadConfig();
@@ -455,12 +443,12 @@ namespace RSTGameTranslation
             }
 
             // Debug output: dump all loaded config values
-            Console.WriteLine("=== All Loaded Config Values ===");
-            foreach (var entry in _configValues)
-            {
-                Console.WriteLine($"  {entry.Key} = {(entry.Key.Contains("api_key") ? "***" : entry.Value)}");
-            }
-            Console.WriteLine("===============================");
+            // Console.WriteLine("=== All Loaded Config Values ===");
+            // foreach (var entry in _configValues)
+            // {
+            //     Console.WriteLine($"  {entry.Key} = {(entry.Key.Contains("api_key") ? "***" : entry.Value)}");
+            // }
+            // Console.WriteLine("===============================");
         }
 
         public bool GetGoogleTranslateUseCloudApi()
@@ -523,16 +511,6 @@ namespace RSTGameTranslation
             _configValues[GOOGLE_TTS_API_KEY] = "<your API key here>";
             _configValues[GOOGLE_TTS_VOICE] = "ja-JP-Neural2-B";
             _configValues[WINDOWS_TTS_VOICE] = "Microsoft David (en-US, Male)";
-            _configValues[LOCAL_TTS_URL] = "http://127.0.0.1:8001";
-            _configValues[LOCAL_TTS_VOICE] = "";
-            _configValues[LOCAL_TTS_MODE] = "Pretrained";
-            _configValues[LOCAL_TTS_MAIN_CHAR_NAME] = "";
-            _configValues[LOCAL_TTS_MAIN_CHAR_WAV] = "";
-            _configValues[LOCAL_TTS_MAIN_CHAR_TXT] = "";
-            _configValues[LOCAL_TTS_MALE_VOICES] = "";
-            _configValues[LOCAL_TTS_FEMALE_VOICES] = "";
-            _configValues[LOCAL_TTS_CHARACTER_GENDERS] = "";
-            _configValues[TTS_VOLUME] = "1.0";
             _configValues[TTS_ENABLED] = "false";
             _configValues[MAX_CONTEXT_PIECES] = (20).ToString(CultureInfo.InvariantCulture);
             _configValues[MIN_CONTEXT_SIZE] = (8).ToString(CultureInfo.InvariantCulture);
@@ -544,8 +522,6 @@ namespace RSTGameTranslation
             _configValues[MISTRAL_API_KEY] = "<your API key here>";
             _configValues[GROQ_MODEL] = "moonshotai/kimi-k2-instruct-0905";
             _configValues[GROQ_API_KEY] = "<your API key here>";
-            _configValues[GROK_MODEL] = "grok-2-mini";
-            _configValues[GROK_API_KEY] = "<your API key here>";
             _configValues[GEMINI_MODEL] = "gemini-2.5-flash-lite";
             _configValues[BLOCK_DETECTION_SCALE] = (3.00).ToString(CultureInfo.InvariantCulture);
             _configValues[BLOCK_DETECTION_SETTLE_TIME] = (0.2).ToString(CultureInfo.InvariantCulture);
@@ -575,6 +551,8 @@ namespace RSTGameTranslation
             _configValues[HOTKEY_AREA_5] = "ALT+5";
             _configValues[HOTKEY_AUDIO_SERVICE] = "ALT+K";
             _configValues[HOTKEY_SWAP_LANGUAGES] = "ALT+V";
+            _configValues[HOTKEY_RETRY_TRANSLATION] = "ALT+T";
+            _configValues[HOTKEY_TOGGLE_EXCLUDE_REGIONS] = "ALT+X";
             _configValues[SHOW_ICON_SIGNAL] = "true";
             _configValues[SEND_DATA_TO_SERVER] = "false";
             _configValues[WINDOWS_OCR_INTEGRATION] = "false";
@@ -583,6 +561,7 @@ namespace RSTGameTranslation
             _configValues[SHOW_QUICK_START] = "true";
             _configValues[FORCE_UPDATE_PROMPT] = (0).ToString(CultureInfo.InvariantCulture);
             _configValues[AUTO_CLEAR_CHAT_HISTORY] = "true";
+            _configValues[AUTO_CLEAR_CHAT_TIMEOUT] = "30"; // Default 30 seconds, 0 = disabled
             _configValues[MANGA_MODE] = "false";
             _configValues[LANGUAGE_FONT_FAMILY] = "Arial";
             _configValues[LANGUAGE_FONT_OVERRIDE] = "false";
@@ -604,11 +583,7 @@ namespace RSTGameTranslation
             _configValues[CLIPBOARD_AUTO_TRANSLATE_DEBOUNCE_MS] = "300";
             _configValues[CLIPBOARD_AUTO_TRANSLATE_MAX_CHARS] = "5000";
             _configValues[WHISPER_RUNTIME] = "cpu";
-            _configValues[AUDIO_CAPTURE_MODE] = "loopback";
-            _configValues[AUDIO_CAPTURE_DEVICE] = "";
-            _configValues[AUDIO_MICROPHONE_DEVICE] = "";
-            _configValues[LOCAL_STT_URL] = "http://127.0.0.1:8001";
-            _configValues[LOCAL_STT_ENABLED] = "false";
+            _configValues[AUTO_MERGE_OVERLAPPING_TEXT] = "true";
 
             // Save the default configuration
             SaveConfig();
@@ -636,7 +611,7 @@ namespace RSTGameTranslation
                         // Store the value
                         _configValues[key] = value;
 
-                        Console.WriteLine($"Loaded multiline config: {key} ({value.Length} chars)");
+                        // Console.WriteLine($"Loaded multiline config: {key} ({value.Length} chars)");
                     }
                 }
             }
@@ -683,7 +658,7 @@ namespace RSTGameTranslation
                                 phraseValue = phraseValue.Substring(0, phraseValue.Length - 1);
 
                             _configValues[key] = phraseValue;
-                            Console.WriteLine($"Loaded ignore phrases config: {key}");
+                            // Console.WriteLine($"Loaded ignore phrases config: {key}");
                             continue;
                         }
 
@@ -694,7 +669,7 @@ namespace RSTGameTranslation
                         if (!_configValues.ContainsKey(key) || key != "TRANSLATION_AREAS")
                         {
                             _configValues[key] = value;
-                            Console.WriteLine($"Loaded config: {key}={value}");
+                            // Console.WriteLine($"Loaded config: {key}={value}");
                         }
                     }
                 }
@@ -974,23 +949,10 @@ namespace RSTGameTranslation
             return GetValue(GROQ_API_KEY);
         }
 
-        // Set Groq API key
+        // Set Gemini API key
         public void SetGroqApiKey(string apiKey)
         {
             _configValues[GROQ_API_KEY] = apiKey;
-            SaveConfig();
-        }
-
-        // Get Grok API key
-        public string GetGrokApiKey()
-        {
-            return GetValue(GROK_API_KEY);
-        }
-
-        // Set Grok API key
-        public void SetGrokApiKey(string apiKey)
-        {
-            _configValues[GROK_API_KEY] = apiKey;
             SaveConfig();
         }
 
@@ -1064,6 +1026,10 @@ namespace RSTGameTranslation
             else if (functionName == "Retry Translation")
             {
                 _configValues[HOTKEY_RETRY_TRANSLATION] = hotKey;
+            }
+            else if (functionName == "Select Exclude Region" || functionName == "Toggle Exclude Regions")
+            {
+                _configValues[HOTKEY_TOGGLE_EXCLUDE_REGIONS] = hotKey;
             }
             SaveConfig();
             Console.WriteLine($"Saving {functionName} to hotkey {hotKey}");
@@ -1139,6 +1105,10 @@ namespace RSTGameTranslation
             else if (functionName == "Retry Translation")
             {
                 return GetValue(HOTKEY_RETRY_TRANSLATION, "ALT+T");
+            }
+            else if (functionName == "Select Exclude Region" || functionName == "Toggle Exclude Regions")
+            {
+                return GetValue(HOTKEY_TOGGLE_EXCLUDE_REGIONS, "ALT+X");
             }
             return GetValue(HOTKEY_START_STOP, "ALT+G");
         }
@@ -1275,9 +1245,7 @@ namespace RSTGameTranslation
         // Set current translation service
         public void SetTranslationService(string service)
         {
-            if (service == "Gemini" || service == "Ollama" || service == "ChatGPT" || service == "Google Translate" ||
-                service == "Mistral" || service == "LM Studio" || service == "Microsoft" ||
-                service == "Groq" || service == "Grok" || service == "Custom API")
+            if (service == "Gemini" || service == "Ollama" || service == "ChatGPT" || service == "Google Translate" || service == "Mistral" || service == "LM Studio" || service == "Microsoft" || service == "Groq" || service == "Custom API")
             {
                 _currentTranslationService = service;
                 _configValues[TRANSLATION_SERVICE] = service;
@@ -1289,11 +1257,11 @@ namespace RSTGameTranslation
         // Get current OCR method
         public string GetOcrMethod()
         {
-            Console.WriteLine("Checking contents of _configValues in GetOcrMethod:");
-            foreach (var key in _configValues.Keys)
-            {
-                Console.WriteLine($"  Config key: '{key}'");
-            }
+            // Console.WriteLine("Checking contents of _configValues in GetOcrMethod:");
+            // foreach (var key in _configValues.Keys)
+            // {
+            //     Console.WriteLine($"  Config key: '{key}'");
+            // }
 
             string ocrMethod = GetValue(OCR_METHOD, "Windows OCR"); // Default to Windows OCR if not set
             Console.WriteLine($"ConfigManager.GetOcrMethod() returning: '{ocrMethod}'");
@@ -1346,11 +1314,6 @@ namespace RSTGameTranslation
             {
                 return defaultGroqPrompt;
             }
-            else if (service == "Grok")
-            {
-                // Reuse Groq-style default prompt for Grok
-                return defaultGroqPrompt;
-            }
             else
             {
                 return "";
@@ -1368,7 +1331,7 @@ namespace RSTGameTranslation
                 {
                     string geminiContent = $"<llm_prompt_multi_start>\n{defaultGeminiPrompt}\n<llm_prompt_multi_end>";
                     File.WriteAllText(_geminiConfigFilePath, geminiContent);
-                    Console.WriteLine("Created default Gemini config file");
+                    // Console.WriteLine("Created default Gemini config file");
                 }
 
                 // Check and create Gemini config file
@@ -1376,7 +1339,7 @@ namespace RSTGameTranslation
                 {
                     string groqContent = $"<llm_prompt_multi_start>\n{defaultGroqPrompt}\n<llm_prompt_multi_end>";
                     File.WriteAllText(_groqConfigFilePath, groqContent);
-                    Console.WriteLine("Created default Groq config file");
+                    // Console.WriteLine("Created default Groq config file");
                 }
 
                 // Check and create Mistral config file
@@ -1384,7 +1347,7 @@ namespace RSTGameTranslation
                 {
                     string mistralContent = $"<llm_prompt_multi_start>\n{defaultMistralPrompt}\n<llm_prompt_multi_end>";
                     File.WriteAllText(_mistralConfigFilePath, mistralContent);
-                    Console.WriteLine("Created default Mistral config file");
+                    // Console.WriteLine("Created default Mistral config file");
                 }
 
                 // Check and create Ollama config file
@@ -1392,14 +1355,14 @@ namespace RSTGameTranslation
                 {
                     string ollamaContent = $"<llm_prompt_multi_start>\n{defaultOllamaPrompt}\n<llm_prompt_multi_end>";
                     File.WriteAllText(_ollamaConfigFilePath, ollamaContent);
-                    Console.WriteLine("Created default Ollama config file");
+                    // Console.WriteLine("Created default Ollama config file");
                 }
 
                 if (!File.Exists(_lmstudioConfigFilePath))
                 {
                     string lmstudioContent = $"<llm_prompt_multi_start>\n{defaultLMStudioPrompt}\n<llm_prompt_multi_end>";
                     File.WriteAllText(_lmstudioConfigFilePath, lmstudioContent);
-                    Console.WriteLine("Created default LM Studio config file");
+                    // Console.WriteLine("Created default LM Studio config file");
                 }
 
                 // Check and create ChatGPT config file
@@ -1407,7 +1370,7 @@ namespace RSTGameTranslation
                 {
                     string chatgptContent = $"<llm_prompt_multi_start>\n{defaultChatGptPrompt}\n<llm_prompt_multi_end>";
                     File.WriteAllText(_chatgptConfigFilePath, chatgptContent);
-                    Console.WriteLine("Created default ChatGPT config file");
+                    // Console.WriteLine("Created default ChatGPT config file");
                 }
 
                 // Check and create Custom Api config file
@@ -1415,7 +1378,7 @@ namespace RSTGameTranslation
                 {
                     string customApiContent = $"<llm_prompt_multi_start>\n{defaultCustomApiPrompt}\n<llm_prompt_multi_end>";
                     File.WriteAllText(_customApiConfigFilePath, customApiContent);
-                    Console.WriteLine("Created default Custom Api config file");
+                    // Console.WriteLine("Created default Custom Api config file");
                 }
 
                 // Google Translate doesn't use prompts, so no need to create config file
@@ -1461,7 +1424,6 @@ namespace RSTGameTranslation
                     filePath = _mistralConfigFilePath;
                     break;
                 case "Groq":
-                case "Grok":
                     filePath = _groqConfigFilePath;
                     break;
                 case "Custom API":
@@ -1527,7 +1489,6 @@ namespace RSTGameTranslation
                     filePath = _mistralConfigFilePath;
                     break;
                 case "Groq":
-                case "Grok":
                     filePath = _groqConfigFilePath;
                     break;
                 case "Custom API":
@@ -1557,6 +1518,17 @@ namespace RSTGameTranslation
         {
             string value = GetValue(AUTO_SIZE_TEXT_BLOCKS, "true");
             return value.ToLower() == "true";
+        }
+
+        public bool IsDarkModeEnabled()
+        {
+            string value = GetValue(DARK_MODE, "false");
+            return value.ToLower() == "true";
+        }
+
+        public void SetDarkModeEnabled(bool value)
+        {
+            SetValue(DARK_MODE, value ? "true" : "false");
         }
 
         // Get similary threshold
@@ -2043,73 +2015,6 @@ namespace RSTGameTranslation
             Console.WriteLine($"Whisper runtime set to: {runtime}");
         }
 
-        // Get/Set audio capture device name for loopback
-        public string GetAudioCaptureDevice()
-        {
-            return GetValue(AUDIO_CAPTURE_DEVICE, ""); // empty = use default
-        }
-
-        public void SetAudioCaptureDevice(string deviceName)
-        {
-            _configValues[AUDIO_CAPTURE_DEVICE] = deviceName ?? "";
-            SaveConfig();
-            Console.WriteLine($"Audio capture device set to: {(string.IsNullOrEmpty(deviceName) ? "(default)" : deviceName)}");
-        }
-
-        // Get/Set audio capture mode (loopback or microphone)
-        public string GetAudioCaptureMode()
-        {
-            return GetValue(AUDIO_CAPTURE_MODE, "loopback"); // default to loopback for backwards compat
-        }
-
-        public void SetAudioCaptureMode(string mode)
-        {
-            _configValues[AUDIO_CAPTURE_MODE] = (mode ?? "loopback").ToLower();
-            SaveConfig();
-            Console.WriteLine($"Audio capture mode set to: {_configValues[AUDIO_CAPTURE_MODE]}");
-        }
-
-        // Get/Set microphone device name for direct microphone capture
-        public string GetAudioMicrophoneDevice()
-        {
-            return GetValue(AUDIO_MICROPHONE_DEVICE, ""); // empty = use default
-        }
-
-        public void SetAudioMicrophoneDevice(string deviceName)
-        {
-            _configValues[AUDIO_MICROPHONE_DEVICE] = deviceName ?? "";
-            SaveConfig();
-            Console.WriteLine($"Audio microphone device set to: {(string.IsNullOrEmpty(deviceName) ? "(default)" : deviceName)}");
-        }
-
-        // Get/Set local Silero STT service URL and enabled flag
-        public string GetLocalSTTUrl()
-        {
-            return GetValue(LOCAL_STT_URL, "http://127.0.0.1:8001"); // default local Silero STT server
-        }
-
-        public void SetLocalSTTUrl(string url)
-        {
-            _configValues[LOCAL_STT_URL] = url ?? "http://127.0.0.1:8001";
-            SaveConfig();
-            Console.WriteLine($"Local STT URL set to: {_configValues[LOCAL_STT_URL]}");
-        }
-
-        public bool GetLocalSTTEnabled()
-        {
-            //string value = GetValue(LOCAL_STT_ENABLED, "false");
-            string value = "true";
-            return value.Equals("true", StringComparison.OrdinalIgnoreCase);
-        }
-
-        public void SetLocalSTTEnabled(bool enabled)
-        {
-            //_configValues[LOCAL_STT_ENABLED] = enabled ? "true" : "false";
-            _configValues[LOCAL_STT_ENABLED] = "true";
-            SaveConfig();
-            Console.WriteLine($"Local STT enabled: {enabled}");
-        }
-
         // Get/Set force update prompt
         public int GetForceUpdatePrompt()
         {
@@ -2242,6 +2147,19 @@ namespace RSTGameTranslation
             Console.WriteLine($"Auto Set Overlay Background enabled: {enabled}");
         }
 
+        public bool IsAutoMergeOverlappingTextEnabled()
+        {
+            string value = GetValue(AUTO_MERGE_OVERLAPPING_TEXT, "true");
+            return value.ToLower() == "true";
+        }
+
+        public void SetAutoMergeOverlappingText(bool enabled)
+        {
+            _configValues[AUTO_MERGE_OVERLAPPING_TEXT] = enabled.ToString().ToLower();
+            SaveConfig();
+            Console.WriteLine($"Auto Merge Overlapping Text enabled: {enabled}");
+        }
+
         public bool IsSendDataToServerEnabled()
         {
             string value = GetValue(SEND_DATA_TO_SERVER, "false");
@@ -2323,6 +2241,25 @@ namespace RSTGameTranslation
             _configValues[AUTO_CLEAR_CHAT_HISTORY] = enabled.ToString().ToLower();
             SaveConfig();
             Console.WriteLine($"Auto clear chatbox history enabled: {enabled}");
+        }
+
+        // Get/Set auto clear chat timeout (in seconds, 0 = disabled)
+        public int GetAutoClearChatTimeout()
+        {
+            string value = GetValue(AUTO_CLEAR_CHAT_TIMEOUT, "30");
+            if (int.TryParse(value, out int result))
+            {
+                return Math.Max(0, Math.Min(60, result));
+            }
+            return 30; // Default to 30 seconds
+        }
+
+        public void SetAutoClearChatTimeout(int seconds)
+        {
+            int clampedValue = Math.Max(0, Math.Min(60, seconds));
+            _configValues[AUTO_CLEAR_CHAT_TIMEOUT] = clampedValue.ToString();
+            SaveConfig();
+            Console.WriteLine($"Auto clear chat timeout set to: {clampedValue} seconds");
         }
 
         // Get/Set chatbox recreate-on-show behavior
@@ -2522,70 +2459,6 @@ namespace RSTGameTranslation
             }
         }
 
-        // Get/Set Local TTS (CosyVoice) API base URL
-        public string GetLocalTtsUrl()
-        {
-            return GetValue(LOCAL_TTS_URL, "http://127.0.0.1:8000");
-        }
-
-        public void SetLocalTtsUrl(string url)
-        {
-            if (url != null)
-            {
-                _configValues[LOCAL_TTS_URL] = url.Trim();
-                SaveConfig();
-                Console.WriteLine($"Local TTS URL set to: {_configValues[LOCAL_TTS_URL]}");
-            }
-        }
-
-        // Get/Set Local TTS voice (speaker ID for CosyVoice SFT mode, or empty for default)
-        public string GetLocalTtsVoice()
-        {
-            return GetValue(LOCAL_TTS_VOICE, "");
-        }
-
-        public void SetLocalTtsVoice(string voice)
-        {
-            if (voice != null)
-            {
-                _configValues[LOCAL_TTS_VOICE] = voice.Trim();
-                SaveConfig();
-                Console.WriteLine($"Local TTS voice set to: {voice}");
-            }
-        }
-
-        public string GetLocalTtsMode() => GetValue(LOCAL_TTS_MODE, "Pretrained");
-        public void SetLocalTtsMode(string mode) { if (!string.IsNullOrEmpty(mode)) { _configValues[LOCAL_TTS_MODE] = mode; SaveConfig(); } }
-        public string GetLocalTtsMainCharName() => GetValue(LOCAL_TTS_MAIN_CHAR_NAME, "");
-        public void SetLocalTtsMainCharName(string name) { if (name != null) { _configValues[LOCAL_TTS_MAIN_CHAR_NAME] = name.Trim(); SaveConfig(); } }
-        public string GetLocalTtsMainCharWav() => GetValue(LOCAL_TTS_MAIN_CHAR_WAV, "");
-        public void SetLocalTtsMainCharWav(string path) { if (path != null) { _configValues[LOCAL_TTS_MAIN_CHAR_WAV] = path.Trim(); SaveConfig(); } }
-        public string GetLocalTtsMainCharTxt() => GetValue(LOCAL_TTS_MAIN_CHAR_TXT, "");
-        public void SetLocalTtsMainCharTxt(string path) { if (path != null) { _configValues[LOCAL_TTS_MAIN_CHAR_TXT] = path.Trim(); SaveConfig(); } }
-        public string GetLocalTtsMaleVoices() => GetValue(LOCAL_TTS_MALE_VOICES, "");
-        public void SetLocalTtsMaleVoices(string list) { if (list != null) { _configValues[LOCAL_TTS_MALE_VOICES] = list; SaveConfig(); } }
-        public string GetLocalTtsFemaleVoices() => GetValue(LOCAL_TTS_FEMALE_VOICES, "");
-        public void SetLocalTtsFemaleVoices(string list) { if (list != null) { _configValues[LOCAL_TTS_FEMALE_VOICES] = list; SaveConfig(); } }
-        public string GetLocalTtsCharacterGenders() => GetValue(LOCAL_TTS_CHARACTER_GENDERS, "");
-        public void SetLocalTtsCharacterGenders(string list) { if (list != null) { _configValues[LOCAL_TTS_CHARACTER_GENDERS] = list; SaveConfig(); } }
-
-        // Get/Set TTS volume (0.0 - 1.0)
-        public float GetTtsVolume()
-        {
-            string value = GetValue(TTS_VOLUME, "1.0");
-            if (float.TryParse(value, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out float vol) && vol >= 0f && vol <= 1f)
-                return vol;
-            return 1.0f;
-        }
-
-        public void SetTtsVolume(float volume)
-        {
-            float clamped = Math.Clamp(volume, 0f, 1f);
-            _configValues[TTS_VOLUME] = clamped.ToString("F2", System.Globalization.CultureInfo.InvariantCulture);
-            SaveConfig();
-            Console.WriteLine($"TTS volume set to: {clamped}");
-        }
-
         // ChatGPT methods
 
         // Get/Set ChatGPT API key
@@ -2650,23 +2523,6 @@ namespace RSTGameTranslation
                 _configValues[GROQ_MODEL] = model;
                 SaveConfig();
                 Console.WriteLine($"Groq model set to: {model}");
-            }
-        }
-
-        // Get Grok model
-        public string GetGrokModel()
-        {
-            return GetValue(GROK_MODEL, "grok-2-mini");
-        }
-
-        // Set Grok model
-        public void SetGrokModel(string? model)
-        {
-            if (!string.IsNullOrWhiteSpace(model))
-            {
-                _configValues[GROK_MODEL] = model;
-                SaveConfig();
-                Console.WriteLine($"Grok model set to: {model}");
             }
         }
 
@@ -2737,9 +2593,6 @@ namespace RSTGameTranslation
                     break;
                 case "Groq":
                     keysConfigKey = GROQ_API_KEYS;
-                    break;
-                case "Grok":
-                    keysConfigKey = GROK_API_KEYS;
                     break;
                 case "Custom API":
                     keysConfigKey = CUSTOM_API_KEYS;
@@ -2813,9 +2666,6 @@ namespace RSTGameTranslation
                 case "Groq":
                     keysConfigKey = GROQ_API_KEYS;
                     break;
-                case "Grok":
-                    keysConfigKey = GROK_API_KEYS;
-                    break;
                 case "Custom API":
                     keysConfigKey = CUSTOM_API_KEYS;
                     break;
@@ -2882,8 +2732,6 @@ namespace RSTGameTranslation
                     return MISTRAL_API_KEY;
                 case "Groq":
                     return GROQ_API_KEY;
-                case "Grok":
-                    return GROK_API_KEY;
                 case "Custom API":
                     return CUSTOM_API_KEY;
                 case "Google Translate":
@@ -3219,11 +3067,11 @@ namespace RSTGameTranslation
         }
 
         // Save translation areas to config
-        public void SaveTranslationAreas(List<Rect> areas, string profileName)
+        public void SaveTranslationAreas(List<TranslationAreaInfo> areas, string profileName)
         {
             try
             {
-                // Format: X1,Y1,Width1,Height1|X2,Y2,Width2,Height2|...
+                // Format: X,Y,Width,Height,ScreenIndex,DpiScaleX,DpiScaleY|...
                 StringBuilder sb = new StringBuilder();
 
                 foreach (var area in areas)
@@ -3236,6 +3084,12 @@ namespace RSTGameTranslation
                     sb.Append(area.Width.ToString(CultureInfo.InvariantCulture));
                     sb.Append(',');
                     sb.Append(area.Height.ToString(CultureInfo.InvariantCulture));
+                    sb.Append(',');
+                    sb.Append(area.ScreenIndex.ToString());
+                    sb.Append(',');
+                    sb.Append(area.DpiScaleX.ToString(CultureInfo.InvariantCulture));
+                    sb.Append(',');
+                    sb.Append(area.DpiScaleY.ToString(CultureInfo.InvariantCulture));
                     sb.Append('+');
                 }
 
@@ -3256,9 +3110,9 @@ namespace RSTGameTranslation
 
 
         // Get translation areas from config
-        public List<Rect> GetTranslationAreas(string filePath)
+        public List<TranslationAreaInfo> GetTranslationAreas(string filePath)
         {
-            List<Rect> areas = new List<Rect>();
+            List<TranslationAreaInfo> areas = new List<TranslationAreaInfo>();
             LoadConfig(filePath);
             try
             {
@@ -3272,7 +3126,8 @@ namespace RSTGameTranslation
                     {
                         string[] parts = areaString.Split(',');
 
-                        if (parts.Length == 4)
+                        // Support old format (4 parts) and new format (7 parts)
+                        if (parts.Length >= 4)
                         {
                             // Parse using invariant culture to handle different decimal separators
                             if (double.TryParse(parts[0], NumberStyles.Any, CultureInfo.InvariantCulture, out double x) &&
@@ -3280,7 +3135,19 @@ namespace RSTGameTranslation
                                 double.TryParse(parts[2], NumberStyles.Any, CultureInfo.InvariantCulture, out double width) &&
                                 double.TryParse(parts[3], NumberStyles.Any, CultureInfo.InvariantCulture, out double height))
                             {
-                                areas.Add(new Rect(x, y, width, height));
+                                int screenIndex = 0;
+                                double dpiScaleX = 1.0;
+                                double dpiScaleY = 1.0;
+                                
+                                // Parse new fields if available
+                                if (parts.Length >= 7)
+                                {
+                                    int.TryParse(parts[4], out screenIndex);
+                                    double.TryParse(parts[5], NumberStyles.Any, CultureInfo.InvariantCulture, out dpiScaleX);
+                                    double.TryParse(parts[6], NumberStyles.Any, CultureInfo.InvariantCulture, out dpiScaleY);
+                                }
+                                
+                                areas.Add(new TranslationAreaInfo(new Rect(x, y, width, height), screenIndex, dpiScaleX, dpiScaleY));
                             }
                         }
                     }
@@ -3294,6 +3161,84 @@ namespace RSTGameTranslation
             }
 
             return areas;
+        }
+
+        // Get exclude regions from config
+        public List<Rect> GetExcludeRegions()
+        {
+            List<Rect> regions = new List<Rect>();
+            try
+            {
+                string value = GetValue(EXCLUDE_REGIONS, "");
+
+                if (!string.IsNullOrEmpty(value))
+                {
+                    string[] regionStrings = value.Split(new[] { '+' }, StringSplitOptions.RemoveEmptyEntries);
+
+                    foreach (string regionString in regionStrings)
+                    {
+                        string[] parts = regionString.Split(',');
+
+                        if (parts.Length == 4)
+                        {
+                            if (double.TryParse(parts[0], NumberStyles.Any, CultureInfo.InvariantCulture, out double x) &&
+                                double.TryParse(parts[1], NumberStyles.Any, CultureInfo.InvariantCulture, out double y) &&
+                                double.TryParse(parts[2], NumberStyles.Any, CultureInfo.InvariantCulture, out double width) &&
+                                double.TryParse(parts[3], NumberStyles.Any, CultureInfo.InvariantCulture, out double height))
+                            {
+                                regions.Add(new Rect(x, y, width, height));
+                            }
+                        }
+                    }
+                }
+
+                Console.WriteLine($"Loaded {regions.Count} exclude regions from config");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error loading exclude regions: {ex.Message}");
+            }
+
+            return regions;
+        }
+
+        // Save exclude regions to config
+        public void SaveExcludeRegions(List<Rect> regions)
+        {
+            try
+            {
+                if (regions.Count == 0)
+                {
+                    _configValues[EXCLUDE_REGIONS] = "";
+                }
+                else
+                {
+                    string value = string.Join("+", regions.Select(r =>
+                        string.Format(CultureInfo.InvariantCulture, "{0},{1},{2},{3}", r.X, r.Y, r.Width, r.Height)));
+                    _configValues[EXCLUDE_REGIONS] = value;
+                }
+                SaveConfig();
+                Console.WriteLine($"Saved {regions.Count} exclude regions to config");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error saving exclude regions: {ex.Message}");
+            }
+        }
+
+        // Get/Set show exclude regions
+        public bool GetShowExcludeRegions()
+        {
+            string value = GetValue(SHOW_EXCLUDE_REGIONS, "true");
+            // return bool.TryParse(value, out bool result) && result;
+            return false;
+        }
+
+        public void SetShowExcludeRegions(bool show)
+        {
+            _configValues[SHOW_EXCLUDE_REGIONS] = show.ToString();
+            SaveConfig();
+            Console.WriteLine($"Show exclude regions set to: {show}");
         }
     }
 }
