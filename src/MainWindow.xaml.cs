@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -88,10 +88,15 @@ namespace RSTGameTranslation
 
         // Store translate area information
         private bool isSelectingTranslationArea = false;
-        private Rect selectedTranslationArea;
+        private TranslationAreaInfo selectedTranslationArea;
         public bool hasSelectedTranslationArea = false;
-        public List<Rect> savedTranslationAreas = new List<Rect>();
+        public List<TranslationAreaInfo> savedTranslationAreas = new List<TranslationAreaInfo>();
         public int currentAreaIndex = 0;
+
+        // Exclude regions for masking
+        public List<Rect> excludeRegions = new List<Rect>();
+        private bool isSelectingExcludeRegion = false;
+        private bool _showExcludeRegions = true;
 
         // Force update prompt
         private int isForceUpdatePrompt = 8; //increase to force update prompt
@@ -508,8 +513,25 @@ namespace RSTGameTranslation
                 }
             };
 
+            // Select exclude region hotkey
+            KeyboardShortcuts.ToggleExcludeRegionsRequested += (s, e) =>
+            {
+                try
+                {
+                    ToggleExcludeRegionSelector();
+                    Console.WriteLine("Exclude region selector toggled via hotkey");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error selecting exclude region via hotkey: {ex.Message}");
+                }
+            };
+
             // Set up global keyboard hook to handle shortcuts even when console has focus
             KeyboardShortcuts.InitializeGlobalHook();
+
+            // Load exclude regions from config
+            LoadExcludeRegions();
 
             // Update audio button label when localization strings change
             LocalizationManager.Instance.PropertyChanged += (s, args) =>
@@ -526,6 +548,195 @@ namespace RSTGameTranslation
                     Console.WriteLine($"Error updating localized audio button: {ex.Message}");
                 }
             };
+        }
+
+        // Load exclude regions from config
+        private void LoadExcludeRegions()
+        {
+            excludeRegions = ConfigManager.Instance.GetExcludeRegions();
+            _showExcludeRegions = ConfigManager.Instance.GetShowExcludeRegions();
+            Console.WriteLine($"Loaded {excludeRegions.Count} exclude regions from config");
+        }
+
+        // Save exclude regions to config
+        public void SaveExcludeRegions()
+        {
+            ConfigManager.Instance.SaveExcludeRegions(excludeRegions);
+            ConfigManager.Instance.SetShowExcludeRegions(_showExcludeRegions);
+        }
+
+        // Toggle exclude region selector
+        public void ToggleExcludeRegionSelector()
+        {
+            if (this.WindowState != WindowState.Minimized)
+            {
+                this.WindowState = WindowState.Minimized;
+            }
+            if (isSelectingExcludeRegion)
+            {
+                isSelectingExcludeRegion = false;
+                return;
+            }
+
+            TranslationAreaSelectorWindow selectorWindow = TranslationAreaSelectorWindow.GetInstance();
+            selectorWindow.SelectionComplete += ExcludeAreaSelector_SelectionComplete;
+            selectorWindow.Closed += (s, e) =>
+            {
+                isSelectingExcludeRegion = false;
+            };
+            selectorWindow.Show();
+
+            isSelectingExcludeRegion = true;
+        }
+
+        // Handle exclude region selection complete
+        private void ExcludeAreaSelector_SelectionComplete(object? sender, TranslationAreaInfo areaInfo)
+        {
+            isSelectingExcludeRegion = false;
+
+            // Add the selected area to exclude regions (chỉ dùng Bounds)
+            excludeRegions.Add(areaInfo.Bounds);
+
+            // Limit to 5 exclude regions
+            if (excludeRegions.Count > 5)
+            {
+                excludeRegions = excludeRegions.Skip(excludeRegions.Count - 5).Take(5).ToList();
+            }
+
+            // Save to config
+            SaveExcludeRegions();
+
+            // Update MonitorWindow to show exclude regions
+            MonitorWindow.Instance.RefreshOverlays();
+
+            Console.WriteLine($"Exclude region added: X={areaInfo.X}, Y={areaInfo.Y}, Width={areaInfo.Width}, Height={areaInfo.Height}");
+            Console.WriteLine($"Total exclude regions: {excludeRegions.Count}");
+        }
+
+        // Clear all exclude regions
+        public void ClearExcludeRegions()
+        {
+            excludeRegions.Clear();
+            SaveExcludeRegions();
+            MonitorWindow.Instance.RefreshOverlays();
+            Console.WriteLine("All exclude regions cleared");
+        }
+
+        // Apply mask to bitmap for exclude regions
+        public Bitmap ApplyExcludeMask(Bitmap bitmap)
+        {
+            if (excludeRegions.Count == 0)
+                return bitmap;
+
+            try
+            {
+                Bitmap result = new Bitmap(bitmap.Width, bitmap.Height);
+                using (Graphics g = Graphics.FromImage(result))
+                {
+                    // Draw the original image
+                    g.DrawImage(bitmap, 0, 0, bitmap.Width, bitmap.Height);
+
+                    // Fill each exclude region with black
+                    using (SolidBrush brush = new SolidBrush(System.Drawing.Color.Black))
+                    {
+                        foreach (Rect region in excludeRegions)
+                        {
+                            // Check if region is within bounds
+                            if (region.X >= 0 && region.Y >= 0 &&
+                                region.X + region.Width <= bitmap.Width &&
+                                region.Y + region.Height <= bitmap.Height)
+                            {
+                                g.FillRectangle(brush, (float)region.X, (float)region.Y, (float)region.Width, (float)region.Height);
+                            }
+                        }
+                    }
+                }
+                bitmap.Dispose();
+                return result;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error applying exclude mask: {ex.Message}");
+                return bitmap;
+            }
+        }
+
+        // Get/Set show exclude regions
+        public bool GetShowExcludeRegions()
+        {
+            return _showExcludeRegions;
+        }
+
+        public void SetShowExcludeRegions(bool show=false)
+        {
+            _showExcludeRegions = show;
+            SaveExcludeRegions();
+            MonitorWindow.Instance.RefreshOverlays();
+        }
+
+        public bool GetIsCapturingWindow()
+        {
+            return isCapturingWindow;
+        }
+
+        // Apply mask to bitmap for exclude regions (with adjusted coordinates)
+        private Bitmap ApplyExcludeRegionsMask(Bitmap bitmap, List<Rect> adjustedRegions)
+        {
+            try
+            {
+                // Console.WriteLine($"=== ApplyExcludeRegionsMask ===");
+                // Console.WriteLine($"Bitmap size: {bitmap.Width}x{bitmap.Height}");
+                // Console.WriteLine($"Number of regions: {adjustedRegions.Count}");
+
+                Bitmap result = new Bitmap(bitmap.Width, bitmap.Height);
+                using (Graphics g = Graphics.FromImage(result))
+                {
+                    // Draw the original image
+                    g.DrawImage(bitmap, 0, 0, bitmap.Width, bitmap.Height);
+
+                    // Fill each exclude region with black
+                    using (SolidBrush brush = new SolidBrush(System.Drawing.Color.Black))
+                    {
+                        int regionIndex = 0;
+                        foreach (Rect region in adjustedRegions)
+                        {
+                            // Console.WriteLine($"Masking region[{regionIndex}]: X={region.X}, Y={region.Y}, W={region.Width}, H={region.Height}");
+
+                            // Check if region is within bounds
+                            bool isInBounds = region.X >= 0 && region.Y >= 0 &&
+                                              (region.X + region.Width) <= bitmap.Width &&
+                                              (region.Y + region.Height) <= bitmap.Height;
+                            // Console.WriteLine($"  -> In bounds: {isInBounds}");
+
+                            if (isInBounds)
+                            {
+                                g.FillRectangle(brush, (float)region.X, (float)region.Y, (float)region.Width, (float)region.Height);
+                                // Console.WriteLine($"  -> Applied mask!");
+                            }
+                            regionIndex++;
+                        }
+                    }
+                }
+                return result;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error applying exclude mask: {ex.Message}");
+                return new Bitmap(bitmap);
+            }
+        }
+
+        // Save masked bitmap to file
+        private void SaveMaskedBitmapToFile(Bitmap bitmap, string path)
+        {
+            try
+            {
+                bitmap.Save(path, System.Drawing.Imaging.ImageFormat.Png);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error saving masked bitmap: {ex.Message}");
+            }
         }
 
         private void SelectAreaButton_Click(object sender, RoutedEventArgs e)
@@ -596,52 +807,27 @@ namespace RSTGameTranslation
 
                 UpdateAudioServiceButtonUI(enabled);
 
-                if (enabled && !localWhisperService.Instance.IsRunning && !LocalSileroSTTService.Instance.IsRunning)
+                if (enabled && !localWhisperService.Instance.IsRunning)
                 {
                     try
                     {
-                        // Check if local Silero STT is enabled
-                        bool useLocalSilero = ConfigManager.Instance.GetLocalSTTEnabled();
-                        
-                        if (useLocalSilero)
+                        await localWhisperService.Instance.StartServiceAsync((original, translated) =>
                         {
-                            Console.WriteLine("[MainWindow] Starting Local Silero STT service...");
-                            await LocalSileroSTTService.Instance.StartServiceAsync((original, translated) =>
-                            {
-                                Console.WriteLine($"Silero STT detected: {original}");
-                            });
-                            Console.WriteLine("Local Silero STT Service started");
-                        }
-                        else
-                        {
-                            Console.WriteLine("[MainWindow] Starting Local Whisper service...");
-                            await localWhisperService.Instance.StartServiceAsync((original, translated) =>
-                            {
-                                Console.WriteLine($"Whisper detected: {original}");
-                            });
-                            Console.WriteLine("Local Whisper Service started");
-                        }
-                        
+                            Console.WriteLine($"Whisper detected: {original}");
+                        });
+                        Console.WriteLine("Local Whisper Service started");
                         AudioStatusEllipse.Fill = new SolidColorBrush(Color.FromRgb(20, 180, 20)); // Green
                         AudioStatusText.Text = LocalizationManager.Instance.Strings["Btn_On"];
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"Error starting audio service: {ex.Message}");
+                        Console.WriteLine($"Error starting Whisper service: {ex.Message}");
                     }
                 }
-                else if (!enabled)
+                else if (!enabled && localWhisperService.Instance.IsRunning)
                 {
-                    if (localWhisperService.Instance.IsRunning)
-                    {
-                        localWhisperService.Instance.Stop();
-                        Console.WriteLine("Local Whisper Service stopped");
-                    }
-                    if (LocalSileroSTTService.Instance.IsRunning)
-                    {
-                        LocalSileroSTTService.Instance.Stop();
-                        Console.WriteLine("Local Silero STT Service stopped");
-                    }
+                    localWhisperService.Instance.Stop();
+                    Console.WriteLine("Local Whisper Service stopped");
                     AudioStatusEllipse.Fill = new SolidColorBrush(Color.FromRgb(239, 68, 68)); // Red
                     AudioStatusText.Text = LocalizationManager.Instance.Strings["Btn_Off"];
                 }
@@ -682,19 +868,18 @@ namespace RSTGameTranslation
         }
 
         // Handle the event when translation region is selected
-        private void TranslationAreaSelector_SelectionComplete(object? sender, Rect selectionRect)
+        private void TranslationAreaSelector_SelectionComplete(object? sender, TranslationAreaInfo areaInfo)
         {
             // Check if multiple areas are allowed
             bool allowMultipleAreas = ConfigManager.Instance.IsMultiSelectionAreaEnabled();
 
             if (allowMultipleAreas)
             {
-
                 if (savedTranslationAreas == null)
-                    savedTranslationAreas = new List<Rect>();
+                    savedTranslationAreas = new List<TranslationAreaInfo>();
 
                 // Add new selection area to the list
-                savedTranslationAreas.Add(selectionRect);
+                savedTranslationAreas.Add(areaInfo);
 
                 // Limit selection area = 5
                 if (savedTranslationAreas.Count > 5)
@@ -711,20 +896,20 @@ namespace RSTGameTranslation
             else
             {
                 // Save lastest selection area if multiple areas are not allowed
-                savedTranslationAreas = new List<Rect> { selectionRect };
+                savedTranslationAreas = new List<TranslationAreaInfo> { areaInfo };
             }
 
             // Default using lastest selection area
             currentAreaIndex = savedTranslationAreas.Count - 1;
 
             // Current selection area
-            Rect currentRect = savedTranslationAreas[currentAreaIndex];
+            TranslationAreaInfo currentArea = savedTranslationAreas[currentAreaIndex];
 
             // Save current selection area
-            selectedTranslationArea = currentRect;
+            selectedTranslationArea = currentArea;
             hasSelectedTranslationArea = true;
 
-            Console.WriteLine($"The translation area has been selected: X={currentRect.X}, Y={currentRect.Y}, Width={currentRect.Width}, Height={currentRect.Height}");
+            Console.WriteLine($"The translation area has been selected: X={currentArea.X}, Y={currentArea.Y}, Width={currentArea.Width}, Height={currentArea.Height}, Screen={currentArea.ScreenIndex}, DPI={currentArea.DpiScaleX:F2}x/{currentArea.DpiScaleY:F2}y");
             Console.WriteLine($"Total saved areas: {savedTranslationAreas.Count}, Current index: {currentAreaIndex + 1}");
 
             // Update capture for new selection area
@@ -756,13 +941,13 @@ namespace RSTGameTranslation
             // Update current index
             currentAreaIndex = index;
 
-            Rect selectedRect = savedTranslationAreas[currentAreaIndex];
+            TranslationAreaInfo selectedArea = savedTranslationAreas[currentAreaIndex];
 
             // Update select area
-            selectedTranslationArea = selectedRect;
+            selectedTranslationArea = selectedArea;
             hasSelectedTranslationArea = true;
 
-            Console.WriteLine($"Switched to translation area {currentAreaIndex + 1}: X={selectedRect.X}, Y={selectedRect.Y}, Width={selectedRect.Width}, Height={selectedRect.Height}");
+            Console.WriteLine($"Switched to translation area {currentAreaIndex + 1}: X={selectedArea.X}, Y={selectedArea.Y}, Width={selectedArea.Width}, Height={selectedArea.Height}, Screen={selectedArea.ScreenIndex}, DPI={selectedArea.DpiScaleX:F2}x/{selectedArea.DpiScaleY:F2}y");
 
             // Update capture area for new selection area
             UpdateCustomCaptureRect();
@@ -970,6 +1155,7 @@ namespace RSTGameTranslation
             bool audioEnabled = false;
             ConfigManager.Instance.SetAudioServiceAutoTranslateEnabled(audioEnabled);
             UpdateAudioServiceButtonUI(audioEnabled);
+            UpdateThemeToggleButtonUI();
 
             // Initialization is complete, now we can save settings changes
             _isInitializing = false;
@@ -1006,6 +1192,9 @@ namespace RSTGameTranslation
             this.LocationChanged += MainWindow_LocationChanged;
             // ToggleMonitorWindow();
             CheckAndShowQuickstart();
+
+            // Load screen selection list
+            LoadScreenList();
         }
 
         // The LocationChanged event to update the position of the MonitorWindow when the MainWindow moves
@@ -1170,7 +1359,7 @@ namespace RSTGameTranslation
             }
         }
 
-        private void OnStartButtonToggleClicked(object sender, RoutedEventArgs e)
+        private async void OnStartButtonToggleClicked(object sender, RoutedEventArgs e)
         {
             System.Windows.Controls.Button btn = (System.Windows.Controls.Button)sender;
             String method = ConfigManager.Instance.GetOcrMethod();
@@ -1183,9 +1372,27 @@ namespace RSTGameTranslation
             }
             else
             {
-                // EasyOCR, RapidOCR and PaddleOCR need connect to server
-                isReady = socketStatusText != null &&
-                        (socketStatusText.Text == $"Successfully connected to {method} server");
+                // EasyOCR, RapidOCR and PaddleOCR: use real socket state instead of status text
+                isReady = SocketManager.Instance.IsConnected;
+
+                // If server might have been started manually, attempt reconnect once before warning
+                if (!isReady)
+                {
+                    try
+                    {
+                        isReady = await SocketManager.Instance.TryReconnectAsync();
+                        if (isReady)
+                        {
+                            SetStatus(string.Format(LocalizationManager.Instance.Strings["Status_ConnectedToServer"], method));
+                            OCRStatusEllipse.Fill = new SolidColorBrush(Color.FromRgb(69, 176, 105)); // Green
+                            OCRStatusText.Text = LocalizationManager.Instance.Strings["Btn_On"];
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Error reconnecting to OCR server before start: {ex.Message}");
+                    }
+                }
             }
 
             if (isStarted)
@@ -1210,7 +1417,6 @@ namespace RSTGameTranslation
                     WindowsTTSService.StopAllTTS();
                     GoogleTTSService.StopAllTTS();
                     ElevenLabsService.StopAllTTS();
-                    LocalTtsService.StopAllTTS();
                 }
                 ShowFastNotification(LocalizationManager.Instance.Strings["NotificationTitle_TranslationStopped"], LocalizationManager.Instance.Strings["NotificationMessage_TranslationStopped_Details"]);
                 StartStatusEllipse.Fill = new SolidColorBrush(Color.FromRgb(239, 68, 68)); // Red
@@ -1506,6 +1712,15 @@ namespace RSTGameTranslation
                 if (hasSelectedTranslationArea && currentAreaIndex >= 0 && currentAreaIndex < savedTranslationAreas.Count)
                 {
                     var selectedArea = savedTranslationAreas[currentAreaIndex];
+                    
+                    DpiHelper.GetCurrentScreenDpi(out double currentDpiX, out double currentDpiY);
+                    if (Math.Abs(selectedArea.DpiScaleX - currentDpiX) > 0.01 || Math.Abs(selectedArea.DpiScaleY - currentDpiY) > 0.01)
+                    {
+                        Console.WriteLine($"WARNING: DPI mismatch detected! Area was captured at DPI {selectedArea.DpiScaleX:F2}x/{selectedArea.DpiScaleY:F2}y, current DPI is {currentDpiX:F2}x/{currentDpiY:F2}y");
+                        double adjustScaleX = currentDpiX / selectedArea.DpiScaleX;
+                        double adjustScaleY = currentDpiY / selectedArea.DpiScaleY;
+                        Console.WriteLine($"Adjusting coordinates by scale: {adjustScaleX:F2}x/{adjustScaleY:F2}y");
+                    }
 
                     captureX = (int)selectedArea.X - rect.Left;
                     captureY = (int)selectedArea.Y - rect.Top;
@@ -1690,50 +1905,107 @@ namespace RSTGameTranslation
 
                         using (Bitmap bitmap = CaptureWindow(capturedWindowHandle))
                         {
-
-                            bitmap.Save(outputPath, ImageFormat.Png);
-
-
-                            if (MonitorWindow.Instance.IsVisible)
+                            // Apply exclude regions mask if any exist
+                            if (excludeRegions.Count > 0)
                             {
-                                MonitorWindow.Instance.UpdateScreenshotFromBitmap();
+                                // Use captureRect coordinates directly (already calculated)
+                                // captureRect is already in screen coordinates from UpdateCaptureRect()
+                                double windowLeft = captureRect.Left;
+                                double windowTop = captureRect.Top;
+                                
+                                Console.WriteLine($"Exclude mask: Using captureRect for conversion: ({windowLeft}, {windowTop})");
+                                
+                                // Convert exclude regions from screen coordinates to bitmap coordinates
+                                // Since bitmap is cropped from window, we need to offset by window position
+                                List<Rect> bitmapAdjustedRegions = new List<Rect>();
+                                foreach (Rect region in excludeRegions)
+                                {
+                                    double offsetX = region.X - windowLeft;
+                                    double offsetY = region.Y - windowTop;
+                                    Rect adjusted = new Rect(offsetX, offsetY, region.Width, region.Height);
+                                    bitmapAdjustedRegions.Add(adjusted);
+                                }
+
+                                using (Bitmap maskedBitmap = ApplyExcludeRegionsMask(bitmap, bitmapAdjustedRegions))
+                                {
+                                    // Save the masked bitmap
+                                    maskedBitmap.Save(outputPath, ImageFormat.Png);
+
+                                    if (MonitorWindow.Instance.IsVisible)
+                                    {
+                                        MonitorWindow.Instance.UpdateScreenshotFromBitmap();
+                                    }
+
+                                    bool shouldPerformOcr = GetIsStarted() && GetOCRCheckIsWanted() &&
+                                        (!isStopOCR || ConfigManager.Instance.IsAutoOCREnabled());
+
+                                    if (shouldPerformOcr)
+                                    {
+                                        Stopwatch stopwatch = new Stopwatch();
+                                        stopwatch.Start();
+
+                                        SetOCRCheckIsWanted(false);
+
+                                        string ocrMethod = GetSelectedOcrMethod();
+                                        if (ocrMethod == "Windows OCR")
+                                        {
+                                            string sourceLanguage = (sourceLanguageComboBox?.SelectedItem as ComboBoxItem)?.Content?.ToString()!;
+                                            Logic.Instance.ProcessWithWindowsOCR(maskedBitmap, sourceLanguage);
+                                        }
+                                        else if (ocrMethod == "OneOCR")
+                                        {
+                                            string sourceLanguage = (sourceLanguageComboBox?.SelectedItem as ComboBoxItem)?.Content?.ToString()!;
+                                            Logic.Instance.ProcessWithOneOCR(maskedBitmap, sourceLanguage);
+                                        }
+                                        else
+                                        {
+                                            Logic.Instance.SendImageToServerOCR(outputPath);
+                                        }
+
+                                        stopwatch.Stop();
+                                        Console.WriteLine($"OCR processing completed in {stopwatch.ElapsedMilliseconds}ms");
+                                    }
+                                }
                             }
-
-
-                            bool shouldPerformOcr = GetIsStarted() && GetOCRCheckIsWanted() &&
-                                                (!isStopOCR || ConfigManager.Instance.IsAutoOCREnabled());
-
-                            if (shouldPerformOcr)
+                            else
                             {
-                                Stopwatch stopwatch = new Stopwatch();
-                                stopwatch.Start();
+                                // No exclude regions - original behavior
+                                bitmap.Save(outputPath, ImageFormat.Png);
 
-                                SetOCRCheckIsWanted(false);
-
-
-                                string ocrMethod = GetSelectedOcrMethod();
-                                if (ocrMethod == "Windows OCR")
+                                if (MonitorWindow.Instance.IsVisible)
                                 {
-                                    string sourceLanguage = (sourceLanguageComboBox?.SelectedItem as ComboBoxItem)?.Content?.ToString()!;
-                                    Logic.Instance.ProcessWithWindowsOCR(bitmap, sourceLanguage);
-                                }
-                                // else if (ocrMethod != "Windows OCR" && ConfigManager.Instance.IsWindowsOCRIntegrationEnabled())
-                                // {
-                                //     string sourceLanguage = (sourceLanguageComboBox?.SelectedItem as ComboBoxItem)?.Content?.ToString()!;
-                                //     Logic.Instance.ProcessWithWindowsOCRIntegration(bitmap, sourceLanguage, outputPath);
-                                // }
-                                else if (ocrMethod == "OneOCR")
-                                {
-                                    string sourceLanguage = (sourceLanguageComboBox?.SelectedItem as ComboBoxItem)?.Content?.ToString()!;
-                                    Logic.Instance.ProcessWithOneOCR(bitmap, sourceLanguage);
-                                }
-                                else
-                                {
-                                    Logic.Instance.SendImageToServerOCR(outputPath);
+                                    MonitorWindow.Instance.UpdateScreenshotFromBitmap();
                                 }
 
-                                stopwatch.Stop();
-                                Console.WriteLine($"OCR processing completed in {stopwatch.ElapsedMilliseconds}ms");
+                                bool shouldPerformOcr = GetIsStarted() && GetOCRCheckIsWanted() &&
+                                    (!isStopOCR || ConfigManager.Instance.IsAutoOCREnabled());
+
+                                if (shouldPerformOcr)
+                                {
+                                    Stopwatch stopwatch = new Stopwatch();
+                                    stopwatch.Start();
+
+                                    SetOCRCheckIsWanted(false);
+
+                                    string ocrMethod = GetSelectedOcrMethod();
+                                    if (ocrMethod == "Windows OCR")
+                                    {
+                                        string sourceLanguage = (sourceLanguageComboBox?.SelectedItem as ComboBoxItem)?.Content?.ToString()!;
+                                        Logic.Instance.ProcessWithWindowsOCR(bitmap, sourceLanguage);
+                                    }
+                                    else if (ocrMethod == "OneOCR")
+                                    {
+                                        string sourceLanguage = (sourceLanguageComboBox?.SelectedItem as ComboBoxItem)?.Content?.ToString()!;
+                                        Logic.Instance.ProcessWithOneOCR(bitmap, sourceLanguage);
+                                    }
+                                    else
+                                    {
+                                        Logic.Instance.SendImageToServerOCR(outputPath);
+                                    }
+
+                                    stopwatch.Stop();
+                                    Console.WriteLine($"OCR processing completed in {stopwatch.ElapsedMilliseconds}ms");
+                                }
                             }
                         }
 
@@ -1823,6 +2095,58 @@ namespace RSTGameTranslation
                     // }
                     // Store the current capture coordinates for use with OCR results
                     Logic.Instance.SetCurrentCapturePosition(captureRect.Left, captureRect.Top);
+
+                    // Apply exclude regions mask (convert screen coordinates to bitmap coordinates)
+                    if (excludeRegions.Count > 0)
+                    {
+                        // Adjust exclude regions to bitmap coordinates
+                        List<Rect> adjustedRegions = new List<Rect>();
+                        foreach (Rect region in excludeRegions)
+                        {
+                            double offsetX = region.X - captureRect.Left;
+                            double offsetY = region.Y - captureRect.Top;
+                            adjustedRegions.Add(new Rect(offsetX, offsetY, region.Width, region.Height));
+                        }
+
+                        // Apply mask to bitmap
+                        using (Bitmap maskedBitmap = ApplyExcludeRegionsMask(bitmap, adjustedRegions))
+                        {
+                            // Save the masked bitmap
+                            SaveMaskedBitmapToFile(maskedBitmap, outputPath);
+
+                            // Perform OCR with the masked bitmap
+                            bool shouldProcessOcr = GetIsStarted() && GetOCRCheckIsWanted() &&
+                                                (!isStopOCR || ConfigManager.Instance.IsAutoOCREnabled());
+
+                            if (shouldProcessOcr)
+                            {
+                                Stopwatch stopwatch = new Stopwatch();
+                                stopwatch.Start();
+
+                                SetOCRCheckIsWanted(false);
+
+                                string ocrMethod = GetSelectedOcrMethod();
+                                if (ocrMethod == "Windows OCR")
+                                {
+                                    string sourceLanguage = (sourceLanguageComboBox?.SelectedItem as ComboBoxItem)?.Content?.ToString()!;
+                                    Logic.Instance.ProcessWithWindowsOCR(maskedBitmap, sourceLanguage);
+                                }
+                                else if (ocrMethod == "OneOCR")
+                                {
+                                    string sourceLanguage = (sourceLanguageComboBox?.SelectedItem as ComboBoxItem)?.Content?.ToString()!;
+                                    Logic.Instance.ProcessWithOneOCR(maskedBitmap, sourceLanguage);
+                                }
+                                else
+                                {
+                                    Logic.Instance.SendImageToServerOCR(outputPath);
+                                }
+
+                                stopwatch.Stop();
+                                Console.WriteLine($"OCR processing completed in {stopwatch.ElapsedMilliseconds}ms");
+                            }
+                        }
+                        return; // Skip the normal processing below
+                    }
 
                     // Update Monitor window with the copy (without saving to file)
                     if (MonitorWindow.Instance.IsVisible)
@@ -2036,30 +2360,38 @@ namespace RSTGameTranslation
                         OCRStatusEllipse.Fill = new SolidColorBrush(Color.FromRgb(239, 68, 68)); // Red
                         OCRStatusText.Text = LocalizationManager.Instance.Strings["Btn_Off"];
 
-                        _ = OcrServerManager.Instance.StartOcrServerAsync(ocrMethod);
-                        while (!OcrServerManager.Instance.serverStarted)
+                        bool started = await OcrServerManager.Instance.StartOcrServerAsync(ocrMethod);
+
+                        if (!started || !OcrServerManager.Instance.serverStarted)
                         {
-                            await Task.Delay(100);
+                            SetStatus(string.Format(LocalizationManager.Instance.Strings["Status_CannotStartOcrServer"], ocrMethod));
+                            OCRStatusEllipse.Fill = new SolidColorBrush(Color.FromRgb(239, 68, 68)); // Red
+                            OCRStatusText.Text = LocalizationManager.Instance.Strings["Btn_Off"];
+
                             if (OcrServerManager.Instance.timeoutStartServer)
                             {
-                                SetStatus(string.Format(LocalizationManager.Instance.Strings["Status_CannotStartOcrServer"], ocrMethod));
                                 System.Windows.MessageBox.Show(
                                     string.Format(LocalizationManager.Instance.Strings["Msg_ServerStartupTimeoutShort"], ocrMethod),
                                     LocalizationManager.Instance.Strings["Title_Error"],
                                     MessageBoxButton.OK,
                                     MessageBoxImage.Error);
-                                break;
                             }
-                        }
-                        if (OcrServerManager.Instance.serverStarted)
-                        {
-                            _ = SocketManager.Instance.TryReconnectAsync();
-                            SetStatus(string.Format(LocalizationManager.Instance.Strings["Status_ConnectedToServer"], ocrMethod));
-
                         }
                         else
                         {
-                            SetStatus(string.Format(LocalizationManager.Instance.Strings["Status_CannotConnectToServer"], ocrMethod));
+                            bool connected = await SocketManager.Instance.TryReconnectAsync();
+                            if (connected)
+                            {
+                                SetStatus(string.Format(LocalizationManager.Instance.Strings["Status_ConnectedToServer"], ocrMethod));
+                                OCRStatusEllipse.Fill = new SolidColorBrush(Color.FromRgb(69, 176, 105)); // Green
+                                OCRStatusText.Text = LocalizationManager.Instance.Strings["Btn_On"];
+                            }
+                            else
+                            {
+                                SetStatus(string.Format(LocalizationManager.Instance.Strings["Status_CannotConnectToServer"], ocrMethod));
+                                OCRStatusEllipse.Fill = new SolidColorBrush(Color.FromRgb(239, 68, 68)); // Red
+                                OCRStatusText.Text = LocalizationManager.Instance.Strings["Btn_Off"];
+                            }
                         }
                     }
                 }
@@ -2096,8 +2428,6 @@ namespace RSTGameTranslation
         {
             ToggleConsoleWindow();
         }
-
-
 
         // Toggle console window visibility
         private void ToggleConsoleWindow()
@@ -2314,6 +2644,105 @@ namespace RSTGameTranslation
                 (MonitorWindow.Instance.BorderThickness == new Thickness(1))
                     ? new Thickness(0)
                     : new Thickness(1);
+        }
+
+        // Load available screens into the screen selection ComboBox
+        private void LoadScreenList()
+        {
+            try
+            {
+                // Clear existing items
+                screenSelectionComboBox.Items.Clear();
+
+                // Get all screens
+                var screens = System.Windows.Forms.Screen.AllScreens;
+
+                // Add each screen to the combo box
+                for (int i = 0; i < screens.Length; i++)
+                {
+                    var screen = screens[i];
+
+                    // Get native resolution
+                    int width = screen.Bounds.Width;
+                    int height = screen.Bounds.Height;
+
+                    // Create simple display info (Screen N - Resolution)
+                    string screenLabel = LocalizationManager.Instance.Strings["Grp_Screen"];
+                    string screenInfo = $"{screenLabel} {i + 1} ({width}x{height})";
+                    if (screen.Primary)
+                    {
+                        string primaryLabel = LocalizationManager.Instance.Strings["Lbl_Primary"];
+                        screenInfo += $" - {primaryLabel}";
+                    }
+
+                    // Create combo box item
+                    ComboBoxItem item = new ComboBoxItem
+                    {
+                        Content = screenInfo,
+                        Tag = i  // Store screen index as Tag
+                    };
+
+                    screenSelectionComboBox.Items.Add(item);
+                    Console.WriteLine($"Added screen {i}: {screenInfo}");
+                }
+
+                // Select the saved screen from config
+                int selectedScreenIndex = ConfigManager.Instance.GetSelectedScreenIndex();
+                if (selectedScreenIndex >= 0 && selectedScreenIndex < screenSelectionComboBox.Items.Count)
+                {
+                    screenSelectionComboBox.SelectedIndex = selectedScreenIndex;
+                }
+                else if (screenSelectionComboBox.Items.Count > 0)
+                {
+                    // Default to first screen if saved index is invalid
+                    screenSelectionComboBox.SelectedIndex = 0;
+                }
+
+                Console.WriteLine($"Screen list loaded. Selected index: {screenSelectionComboBox.SelectedIndex}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error loading screen list: {ex.Message}");
+            }
+        }
+
+        // Screen selection ComboBox changed handler
+        private void ScreenSelectionComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            try
+            {
+                // Skip if initializing
+                if (_isInitializing)
+                    return;
+
+                if (screenSelectionComboBox.SelectedItem is ComboBoxItem selectedItem)
+                {
+                    // Get the screen index from the Tag
+                    if (selectedItem.Tag is int screenIndex)
+                    {
+                        // Save to config
+                        ConfigManager.Instance.SetSelectedScreenIndex(screenIndex);
+                        Console.WriteLine($"Screen selection changed to index: {screenIndex}");
+
+                        // Invalidate DPI cache since we changed screens
+                        DpiHelper.InvalidateCache();
+
+                        // Update capture rectangle for the new screen
+                        UpdateCaptureRect();
+
+                        // Clear translation areas since they may be on a different screen
+                        if (savedTranslationAreas.Count > 0)
+                        {
+                            // Optionally clear areas or show warning
+                            Console.WriteLine("Warning: Translation areas were selected on a different screen. Consider re-selecting areas.");
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error handling screen selection change: {ex.Message}");
+            }
         }
 
         // ChatBox Button click handler
@@ -2819,39 +3248,39 @@ namespace RSTGameTranslation
                 SetStatus(string.Format(LocalizationManager.Instance.Strings["Status_StartingOcrServer"], ocrMethod));
 
                 // Start the OCR server
-                await OcrServerManager.Instance.StartOcrServerAsync(ocrMethod);
-                SetStatus(string.Format(LocalizationManager.Instance.Strings["Status_StartingOcrServer"], ocrMethod));
-                var startTime = DateTime.Now;
-                while (!OcrServerManager.Instance.serverStarted)
+                bool started = await OcrServerManager.Instance.StartOcrServerAsync(ocrMethod);
+
+                if (!started || !OcrServerManager.Instance.serverStarted)
                 {
-                    await Task.Delay(100);
+                    SetStatus(string.Format(LocalizationManager.Instance.Strings["Status_CannotStartOcrServer"], ocrMethod));
+
                     if (OcrServerManager.Instance.timeoutStartServer)
                     {
-                        SetStatus(string.Format(LocalizationManager.Instance.Strings["Status_CannotStartOcrServer"], ocrMethod));
                         System.Windows.MessageBox.Show(
                             string.Format(LocalizationManager.Instance.Strings["Msg_ServerStartupTimeout"], ocrMethod),
                             LocalizationManager.Instance.Strings["Title_Error"],
                             MessageBoxButton.OK,
                             MessageBoxImage.Error);
-                        break;
                     }
-                }
-
-
-
-                if (OcrServerManager.Instance.serverStarted)
-                {
-                    UpdateServerButtonStatus(OcrServerManager.Instance.serverStarted);
-                    // Update socket status
-                    await SocketManager.Instance.TryReconnectAsync();
-                    OCRStatusEllipse.Fill = new SolidColorBrush(Color.FromRgb(69, 176, 105)); // Green
-                    OCRStatusText.Text = LocalizationManager.Instance.Strings["Btn_On"];
                 }
                 else
                 {
-                    OcrServerManager.Instance.StopOcrServer();
-                    OCRStatusEllipse.Fill = new SolidColorBrush(Color.FromRgb(239, 68, 68)); // Red
-                    OCRStatusText.Text = LocalizationManager.Instance.Strings["Btn_Off"];
+                    UpdateServerButtonStatus(OcrServerManager.Instance.serverStarted);
+                    // Update socket status
+                    bool connected = await SocketManager.Instance.TryReconnectAsync();
+
+                    if (connected)
+                    {
+                        SetStatus(string.Format(LocalizationManager.Instance.Strings["Status_ConnectedToServer"], ocrMethod));
+                        OCRStatusEllipse.Fill = new SolidColorBrush(Color.FromRgb(69, 176, 105)); // Green
+                        OCRStatusText.Text = LocalizationManager.Instance.Strings["Btn_On"];
+                    }
+                    else
+                    {
+                        SetStatus(string.Format(LocalizationManager.Instance.Strings["Status_CannotConnectToServer"], ocrMethod));
+                        OCRStatusEllipse.Fill = new SolidColorBrush(Color.FromRgb(239, 68, 68)); // Red
+                        OCRStatusText.Text = LocalizationManager.Instance.Strings["Btn_Off"];
+                    }
                 }
 
             }
@@ -3276,13 +3705,6 @@ namespace RSTGameTranslation
 
             // Update button status
             btnStopOcrServer.IsEnabled = isConnected;
-
-            // Update status text
-            if (isConnected)
-            {
-                string ocrMethod = GetSelectedOcrMethod();
-                SetStatus($"Successfully connected to {ocrMethod} server");
-            }
         }
 
         private void SelectWindowButton_Click(object sender, RoutedEventArgs e)
@@ -3453,6 +3875,40 @@ namespace RSTGameTranslation
             }
         }
 
+        private void ThemeToggleButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                bool enableDarkMode = !ConfigManager.Instance.IsDarkModeEnabled();
+                ConfigManager.Instance.SetDarkModeEnabled(enableDarkMode);
+                ThemeManager.ApplyTheme(enableDarkMode);
+                UpdateThemeToggleButtonUI();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error toggling theme: {ex.Message}");
+            }
+        }
+
+        private void UpdateThemeToggleButtonUI()
+        {
+            try
+            {
+                if (themeToggleIcon == null || themeToggleButton == null)
+                {
+                    return;
+                }
+
+                bool isDarkMode = ConfigManager.Instance.IsDarkModeEnabled();
+                themeToggleIcon.Text = isDarkMode ? "☀" : "🌙";
+                themeToggleButton.ToolTip = isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode";
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error updating theme toggle UI: {ex.Message}");
+            }
+        }
+
         // private bool isListening = false;
         // private OpenAIRealtimeAudioServiceWhisper? openAIRealtimeAudioService = null;
 
@@ -3496,6 +3952,12 @@ namespace RSTGameTranslation
                     OCRStatusText.Text = LocalizationManager.Instance.Strings["Btn_Off"];
                 }
                 AppVersion.Text = LocalizationManager.Instance.Strings["App_Version"] + " " + SplashManager.CurrentVersion.ToString("F1", System.Globalization.CultureInfo.InvariantCulture);
+
+                // Reload screen list to update localized text
+                LoadScreenList();
+
+                // Refresh dark/light toggle tooltip if language changed
+                UpdateThemeToggleButtonUI();
             }
         }
 

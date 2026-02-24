@@ -21,10 +21,6 @@ using System.Windows.Interop;
 using RST;
 using Windows.Media.SpeechSynthesis;
 using System.IO;
-using NAudio.Wave;
-using NAudio.Wave.SampleProviders;
-using System.Collections.Generic;
-using NAudio.CoreAudioApi;
 
 namespace RSTGameTranslation
 {
@@ -168,9 +164,6 @@ namespace RSTGameTranslation
                 ConfigManager.Instance.SetTranslationService(configTransService);
 
                 Console.WriteLine("Settings window fully loaded and initialized. Changes will now be saved.");
-
-                // Load audio capture devices
-                LoadAvailableAudioDevices();
             }
             catch (Exception ex)
             {
@@ -951,6 +944,9 @@ namespace RSTGameTranslation
             // Set auto set overlay background color
             autoSetOverlayBackgroundColorcheckBox.IsChecked = ConfigManager.Instance.IsAutoSetOverlayBackground();
 
+            // Set auto merge overlapping text
+            autoMergeOverlappingTextCheckBox.IsChecked = ConfigManager.Instance.IsAutoMergeOverlappingTextEnabled();
+
             // Set auto OCR
             AutoOCRCheckBox.IsChecked = ConfigManager.Instance.IsAutoOCREnabled();
 
@@ -1005,27 +1001,6 @@ namespace RSTGameTranslation
             // Set initial visibility for thread count (only show for CPU)
             UpdateWhisperThreadCountVisibility(savedRuntime);
             whisperRuntimeComboBox.SelectionChanged += WhisperRuntimeComboBox_SelectionChanged;
-
-            // Set audio capture mode from config
-            audioCaptureModeComboBox.SelectionChanged -= AudioCaptureModeComboBox_SelectionChanged;
-            string savedCaptureMode = ConfigManager.Instance.GetAudioCaptureMode();
-            foreach (var item in audioCaptureModeComboBox.Items)
-            {
-                if (item is ComboBoxItem cbItem && string.Equals(cbItem.Tag?.ToString(), savedCaptureMode, StringComparison.OrdinalIgnoreCase))
-                {
-                    audioCaptureModeComboBox.SelectedItem = item;
-                    break;
-                }
-            }
-            audioCaptureModeComboBox.SelectionChanged += AudioCaptureModeComboBox_SelectionChanged;
-
-            // Load audio devices based on selected mode
-            LoadAvailableAudioDevices();
-
-            // Set Local Silero STT settings from config
-            localSileroSTTEnabledCheckBox.IsChecked = ConfigManager.Instance.GetLocalSTTEnabled();
-            localSileroSTTUrlTextBox.Text = ConfigManager.Instance.GetLocalSTTUrl();
-            localSileroSTTUrlTextBox.IsEnabled = ConfigManager.Instance.GetLocalSTTEnabled();
 
             // Set manga mode
             // MangaModeCheckBox.IsChecked = ConfigManager.Instance.IsMangaModeEnabled();
@@ -1120,8 +1095,6 @@ namespace RSTGameTranslation
             customApiKeyPasswordBox.Password = ConfigManager.Instance.GetCustomApiKey();
             // Initialize API key for Groq
             groqApiKeyPasswordBox.Password = ConfigManager.Instance.GetGroqApiKey();
-            // Initialize API key for Grok
-            grokApiKeyPasswordBox.Password = ConfigManager.Instance.GetGrokApiKey();
 
             // Initialize Ollama settings
             ollamaUrlTextBox.Text = ConfigManager.Instance.GetOllamaUrl();
@@ -1148,25 +1121,12 @@ namespace RSTGameTranslation
             elevenLabsVoiceComboBox.SelectionChanged -= ElevenLabsVoiceComboBox_SelectionChanged;
             googleTtsVoiceComboBox.SelectionChanged -= GoogleTtsVoiceComboBox_SelectionChanged;
             windowTTSVoiceComboBox.SelectionChanged -= WindowTTSVoiceComboBox_SelectionChanged;
-            if (localTtsVoiceComboBox != null) localTtsVoiceComboBox.SelectionChanged -= LocalTtsVoiceComboBox_SelectionChanged;
-            if (localTtsModeComboBox != null) localTtsModeComboBox.SelectionChanged -= LocalTtsModeComboBox_SelectionChanged;
-            if (localTtsUrlTextBox != null) localTtsUrlTextBox.LostFocus -= LocalTtsUrlTextBox_LostFocus;
 
             // Set TTS enabled state
             ttsEnabledCheckBox.IsChecked = ConfigManager.Instance.IsTtsEnabled();
 
             // Set Exclude character name
             excludeCharacterNameCheckBox.IsChecked = ConfigManager.Instance.IsExcludeCharacterNameEnabled();
-
-            // Set TTS volume
-            if (ttsVolumeSlider != null)
-            {
-                ttsVolumeSlider.ValueChanged -= TtsVolumeSlider_ValueChanged;
-                float vol = ConfigManager.Instance.GetTtsVolume();
-                ttsVolumeSlider.Value = vol;
-                if (ttsVolumeValueText != null) ttsVolumeValueText.Text = $"{(int)(vol * 100)}%";
-                ttsVolumeSlider.ValueChanged += TtsVolumeSlider_ValueChanged;
-            }
 
             // Set TTS service
             string ttsService = ConfigManager.Instance.GetTtsService();
@@ -1221,40 +1181,6 @@ namespace RSTGameTranslation
                 }
             }
 
-            // Set Local TTS URL, mode, voice, and voice assignment
-            if (localTtsUrlTextBox != null)
-                localTtsUrlTextBox.Text = ConfigManager.Instance.GetLocalTtsUrl();
-            if (localTtsModeComboBox != null)
-            {
-                string mode = ConfigManager.Instance.GetLocalTtsMode();
-                foreach (ComboBoxItem item in localTtsModeComboBox.Items)
-                {
-                    if (string.Equals(item.Tag?.ToString(), mode, StringComparison.OrdinalIgnoreCase))
-                    {
-                        localTtsModeComboBox.SelectedItem = item;
-                        break;
-                    }
-                }
-            }
-            if (localTtsVoiceComboBox != null)
-            {
-                string localVoiceId = ConfigManager.Instance.GetLocalTtsVoice();
-                foreach (ComboBoxItem item in localTtsVoiceComboBox.Items)
-                {
-                    if (string.Equals(item.Tag?.ToString(), localVoiceId, StringComparison.OrdinalIgnoreCase))
-                    {
-                        localTtsVoiceComboBox.SelectedItem = item;
-                        break;
-                    }
-                }
-            }
-            if (localTtsMainCharNameTextBox != null) localTtsMainCharNameTextBox.Text = ConfigManager.Instance.GetLocalTtsMainCharName();
-            if (localTtsMainCharWavTextBox != null) localTtsMainCharWavTextBox.Text = ConfigManager.Instance.GetLocalTtsMainCharWav();
-            if (localTtsMainCharTxtTextBox != null) localTtsMainCharTxtTextBox.Text = ConfigManager.Instance.GetLocalTtsMainCharTxt();
-            if (localTtsMaleVoicesTextBox != null) localTtsMaleVoicesTextBox.Text = ConfigManager.Instance.GetLocalTtsMaleVoices();
-            if (localTtsFemaleVoicesTextBox != null) localTtsFemaleVoicesTextBox.Text = ConfigManager.Instance.GetLocalTtsFemaleVoices();
-            if (localTtsCharacterGendersTextBox != null) localTtsCharacterGendersTextBox.Text = ConfigManager.Instance.GetLocalTtsCharacterGenders();
-
             // Re-attach TTS event handlers
             ttsEnabledCheckBox.Checked += TtsEnabledCheckBox_CheckedChanged;
             ttsEnabledCheckBox.Unchecked += TtsEnabledCheckBox_CheckedChanged;
@@ -1262,12 +1188,12 @@ namespace RSTGameTranslation
             elevenLabsVoiceComboBox.SelectionChanged += ElevenLabsVoiceComboBox_SelectionChanged;
             googleTtsVoiceComboBox.SelectionChanged += GoogleTtsVoiceComboBox_SelectionChanged;
             windowTTSVoiceComboBox.SelectionChanged += WindowTTSVoiceComboBox_SelectionChanged;
-            if (localTtsVoiceComboBox != null) localTtsVoiceComboBox.SelectionChanged += LocalTtsVoiceComboBox_SelectionChanged;
-            if (localTtsModeComboBox != null) localTtsModeComboBox.SelectionChanged += LocalTtsModeComboBox_SelectionChanged;
-            if (localTtsUrlTextBox != null) localTtsUrlTextBox.LostFocus += LocalTtsUrlTextBox_LostFocus;
 
             // Load ignore phrases
             LoadIgnorePhrases();
+
+            // Load exclude regions
+            LoadExcludeRegions();
 
             // Audio Processing settings
             audioProcessingProviderComboBox.SelectedIndex = 0; // Only one for now
@@ -1325,12 +1251,13 @@ namespace RSTGameTranslation
                     ConfigManager.Instance.SetHotKey(functionName, combineKey);
                     statusUpdateHotKey.Visibility = Visibility.Visible;
                     ListHotKey_TextChanged();
-                    // Init keyboard hook
-                    KeyboardShortcuts.InitializeGlobalHook();
-                    IntPtr handle = new WindowInteropHelper(this).Handle;
-                    KeyboardShortcuts.SetMainWindowHandle(handle);
-                    HwndSource source = HwndSource.FromHwnd(handle);
-                    source.AddHook(WndProc);
+                    // Refresh parsed hotkeys and re-register on the main window handle
+                    KeyboardShortcuts.RefreshHotkeys();
+                    IntPtr mainHandle = new WindowInteropHelper(MainWindow.Instance).Handle;
+                    if (mainHandle != IntPtr.Zero)
+                    {
+                        KeyboardShortcuts.SetMainWindowHandle(mainHandle);
+                    }
                     // Auto close notification after 1.5 second
                     var timer = new System.Windows.Threading.DispatcherTimer
                     {
@@ -1380,6 +1307,7 @@ namespace RSTGameTranslation
             hotKeyAudio.Text = ConfigManager.Instance.GetHotKey("Audio Service");
             hotKeySwapLanguages.Text = ConfigManager.Instance.GetHotKey("Swap Languages");
             hotKeyRetryTranslate.Text = ConfigManager.Instance.GetHotKey("Retry Translation");
+            hotKeyToggleExcludeRegions.Text = ConfigManager.Instance.GetHotKey("Select Exclude Region");
             // Mainwindows
             MainWindow.Instance.hotKeyStartStop.Text = ConfigManager.Instance.GetHotKey("Start/Stop");
             MainWindow.Instance.hotKeyOverlay.Text = ConfigManager.Instance.GetHotKey("Overlay");
@@ -1398,6 +1326,10 @@ namespace RSTGameTranslation
             MainWindow.Instance.hotKeyAudio.Text = ConfigManager.Instance.GetHotKey("Audio Service");
             MainWindow.Instance.hotKeySwapLanguages.Text = ConfigManager.Instance.GetHotKey("Swap Languages");
             MainWindow.Instance.hotKeyRetryTranslate.Text = ConfigManager.Instance.GetHotKey("Retry Translation");
+            if (MainWindow.Instance.FindName("hotKeyToggleExcludeRegions") is TextBlock hotKeyToggleExcludeRegionsText)
+            {
+                hotKeyToggleExcludeRegionsText.Text = ConfigManager.Instance.GetHotKey("Select Exclude Region");
+            }
         }
 
         private void HotKeyFunctionComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -1864,7 +1796,6 @@ namespace RSTGameTranslation
                 bool isMistralSelected = selectedService == "Mistral";
                 bool isGoogleTranslateSelected = selectedService == "Google Translate";
                 bool isGroqSelected = selectedService == "Groq";
-                bool isGrokSelected = selectedService == "Grok";
                 bool isMicrosoftSelected = selectedService == "Microsoft";
 
                 // Make sure the window is fully loaded and controls are initialized
@@ -1880,8 +1811,6 @@ namespace RSTGameTranslation
                     customApiModelLabel == null || customApiModelGrid == null ||
                     groqApiKeyLabel == null || groqApiKeyPasswordBox == null ||
                     groqModelLabel == null || groqModelGrid == null ||
-                    grokApiKeyLabel == null || grokApiKeyPasswordBox == null ||
-                    grokModelLabel == null || grokModelGrid == null ||
                     mistralApiKeyLabel == null || mistralApiKeyPasswordBox == null ||
                     mistralModelLabel == null || mistralModelGrid == null ||
                     chatGptApiKeyLabel == null || chatGptApiKeyGrid == null ||
@@ -1917,6 +1846,7 @@ namespace RSTGameTranslation
                 customApiUrlTextBox.Visibility = isCustomApiSelected ? Visibility.Visible : Visibility.Collapsed;
                 customApiModelLabel.Visibility = isCustomApiSelected ? Visibility.Visible : Visibility.Collapsed;
                 customApiModelGrid.Visibility = isCustomApiSelected ? Visibility.Visible : Visibility.Collapsed;
+                customApiNoteTextBlock.Visibility = isCustomApiSelected ? Visibility.Visible : Visibility.Collapsed;
 
                 // Show/hide Groq-specific settings
                 groqApiKeyLabel.Visibility = isGroqSelected ? Visibility.Visible : Visibility.Collapsed;
@@ -1926,15 +1856,6 @@ namespace RSTGameTranslation
                 groqModelGrid.Visibility = isGroqSelected ? Visibility.Visible : Visibility.Collapsed;
                 viewGroqKeysButton.Visibility = isGroqSelected ? Visibility.Visible : Visibility.Collapsed;
                 SaveGroqKeysButton.Visibility = isGroqSelected ? Visibility.Visible : Visibility.Collapsed;
-
-                // Show/hide Grok-specific settings
-                grokApiKeyLabel.Visibility = isGrokSelected ? Visibility.Visible : Visibility.Collapsed;
-                grokApiKeyGrid.Visibility = isGrokSelected ? Visibility.Visible : Visibility.Collapsed;
-                grokApiKeyHelpText.Visibility = isGrokSelected ? Visibility.Visible : Visibility.Collapsed;
-                grokModelLabel.Visibility = isGrokSelected ? Visibility.Visible : Visibility.Collapsed;
-                grokModelGrid.Visibility = isGrokSelected ? Visibility.Visible : Visibility.Collapsed;
-                viewGrokKeysButton.Visibility = isGrokSelected ? Visibility.Visible : Visibility.Collapsed;
-                SaveGrokKeysButton.Visibility = isGrokSelected ? Visibility.Visible : Visibility.Collapsed;
 
                 // Show/hide Mistral-specific settings
                 mistralApiKeyLabel.Visibility = isMistralSelected ? Visibility.Visible : Visibility.Collapsed;
@@ -2248,15 +2169,13 @@ namespace RSTGameTranslation
                 bool isElevenLabsSelected = selectedService == "ElevenLabs";
                 bool isGoogleTtsSelected = selectedService == "Google Cloud TTS";
                 bool isWindowTtsSelected = selectedService == "Windows TTS";
-                bool isLocalTtsSelected = selectedService == "Local API";
 
                 // Make sure the window is fully loaded and controls are initialized
                 if (elevenLabsApiKeyLabel == null || elevenLabsApiKeyGrid == null ||
                     elevenLabsApiKeyHelpText == null || elevenLabsVoiceLabel == null ||
                     elevenLabsVoiceComboBox == null || googleTtsApiKeyLabel == null ||
                     googleTtsApiKeyGrid == null || googleTtsVoiceLabel == null ||
-                    googleTtsVoiceComboBox == null || windowTTSVoiceLabel == null || windowTTSVoiceComboBox == null ||
-                    localTtsUrlLabel == null || localTtsUrlPanel == null || localTtsModeLabel == null || localTtsModePanel == null || localTtsVoiceComboBox == null)
+                    googleTtsVoiceComboBox == null || windowTTSVoiceLabel == null || windowTTSVoiceComboBox == null)
                 {
                     Console.WriteLine("TTS UI elements not initialized yet. Skipping visibility update.");
                     return;
@@ -2291,27 +2210,6 @@ namespace RSTGameTranslation
                 windowTTSVoiceLabel.Visibility = isWindowTtsSelected ? Visibility.Visible : Visibility.Collapsed;
                 windowTTSVoiceComboBox.Visibility = isWindowTtsSelected ? Visibility.Visible : Visibility.Collapsed;
                 windowsTTSGuide.Visibility = isWindowTtsSelected ? Visibility.Visible : Visibility.Collapsed;
-
-                // Show/hide Local TTS specific settings
-                localTtsUrlLabel.Visibility = isLocalTtsSelected ? Visibility.Visible : Visibility.Collapsed;
-                localTtsUrlPanel.Visibility = isLocalTtsSelected ? Visibility.Visible : Visibility.Collapsed;
-                localTtsModeLabel.Visibility = isLocalTtsSelected ? Visibility.Visible : Visibility.Collapsed;
-                localTtsModePanel.Visibility = isLocalTtsSelected ? Visibility.Visible : Visibility.Collapsed;
-                if (localTtsVoiceAssignmentGroup != null)
-                    localTtsVoiceAssignmentGroup.Visibility = isLocalTtsSelected ? Visibility.Visible : Visibility.Collapsed;
-                // Sync VoiceClone-only row visibility when switching to Local TTS
-                if (isLocalTtsSelected)
-                {
-                    string mode = ConfigManager.Instance.GetLocalTtsMode();
-                    bool isVoiceClone = mode.Equals("VoiceClone", StringComparison.OrdinalIgnoreCase) || mode.Equals("F5TTS", StringComparison.OrdinalIgnoreCase);
-                    if (localTtsMainCharWavLabel != null) localTtsMainCharWavLabel.Visibility = isVoiceClone ? Visibility.Visible : Visibility.Collapsed;
-                    if (localTtsMainCharWavPanel != null) localTtsMainCharWavPanel.Visibility = isVoiceClone ? Visibility.Visible : Visibility.Collapsed;
-                    if (localTtsMainCharTxtLabel != null) localTtsMainCharTxtLabel.Visibility = isVoiceClone ? Visibility.Visible : Visibility.Collapsed;
-                    if (localTtsMainCharTxtPanel != null) localTtsMainCharTxtPanel.Visibility = isVoiceClone ? Visibility.Visible : Visibility.Collapsed;
-                    if (localTtsMaleVoicesExpander != null) localTtsMaleVoicesExpander.Visibility = isVoiceClone ? Visibility.Visible : Visibility.Collapsed;
-                    if (localTtsFemaleVoicesExpander != null) localTtsFemaleVoicesExpander.Visibility = isVoiceClone ? Visibility.Visible : Visibility.Collapsed;
-                }
-
                 // Load service-specific settings if they're being shown
                 if (isElevenLabsSelected)
                 {
@@ -2386,21 +2284,6 @@ namespace RSTGameTranslation
                         }
                     }
                 }
-                else if (isLocalTtsSelected)
-                {
-                    localTtsUrlTextBox.Text = ConfigManager.Instance.GetLocalTtsUrl();
-                    string voiceId = ConfigManager.Instance.GetLocalTtsVoice();
-                    // Select by Tag (voice id) or Content
-                    foreach (ComboBoxItem item in localTtsVoiceComboBox.Items)
-                    {
-                        if (string.Equals(item.Tag?.ToString(), voiceId, StringComparison.OrdinalIgnoreCase) ||
-                            string.Equals(item.Content?.ToString(), voiceId, StringComparison.OrdinalIgnoreCase))
-                        {
-                            localTtsVoiceComboBox.SelectedItem = item;
-                            break;
-                        }
-                    }
-                }
             }
             catch (Exception ex)
             {
@@ -2447,27 +2330,15 @@ namespace RSTGameTranslation
         {
             try
             {
-                // Legacy behavior kept simple for now – just log
+                // string apiKey = geminiApiKeyPasswordBox.Password.Trim();
+
+                // // Update the config
+                // ConfigManager.Instance.SetGeminiApiKey(apiKey);
                 Console.WriteLine("Groq API key updated");
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Error updating Groq API key: {ex.Message}");
-            }
-        }
-
-        // Grok API Key changed
-        private void GrokApiKeyPasswordBox_PasswordChanged(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                string apiKey = grokApiKeyPasswordBox.Password.Trim();
-                ConfigManager.Instance.SetGrokApiKey(apiKey);
-                Console.WriteLine("Grok API key updated");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error updating Grok API key: {ex.Message}");
             }
         }
 
@@ -2650,11 +2521,6 @@ namespace RSTGameTranslation
         private void GroqApiLink_Click(object sender, RoutedEventArgs e)
         {
             OpenUrl("https://console.groq.com/keys");
-        }
-
-        private void GrokApiLink_Click(object sender, RoutedEventArgs e)
-        {
-            OpenUrl("https://docs.x.ai/docs/getting-started");
         }
 
         private void MistralApiLink_Click(object sender, RoutedEventArgs e)
@@ -3133,59 +2999,6 @@ namespace RSTGameTranslation
             }
         }
 
-        private void GrokModelComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            try
-            {
-                if (grokModelComboBox.SelectedItem is ComboBoxItem selectedItem)
-                {
-                    string model = selectedItem.Content?.ToString() ?? "grok-2-mini";
-                    ConfigManager.Instance.SetGrokModel(model);
-                    Console.WriteLine($"Grok model set to: {model}");
-
-                    if (ConfigManager.Instance.GetCurrentTranslationService() == "Grok")
-                    {
-                        Console.WriteLine("Grok model changed. Triggering retranslation...");
-                        // Reset the hash to force a retranslation
-                        Logic.Instance.ResetHash();
-
-                        // Clear any existing text objects to refresh the display
-                        Logic.Instance.ClearAllTextObjects();
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error updating Grok model: {ex.Message}");
-            }
-        }
-
-        private void GrokModelComboBox_LostFocus(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                if (grokModelComboBox.Text is string model && !string.IsNullOrWhiteSpace(model))
-                {
-                    ConfigManager.Instance.SetGrokModel(model);
-                    Console.WriteLine($"Grok model set from text input to: {model}");
-
-                    if (ConfigManager.Instance.GetCurrentTranslationService() == "Grok")
-                    {
-                        Console.WriteLine("Grok model changed from text input. Triggering retranslation...");
-                        // Reset the hash to force a retranslation
-                        Logic.Instance.ResetHash();
-
-                        // Clear any existing text objects to refresh the display
-                        Logic.Instance.ClearAllTextObjects();
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error updating Grok model from text input: {ex.Message}");
-            }
-        }
-
         private void MistralModelComboBox_LostFocus(object sender, RoutedEventArgs e)
         {
             try
@@ -3527,153 +3340,6 @@ namespace RSTGameTranslation
             catch (Exception ex)
             {
                 Console.WriteLine($"Error updating Windows TTS voice: {ex.Message}");
-            }
-        }
-
-        private void LocalTtsUrlTextBox_LostFocus(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                if (_isInitializing || localTtsUrlTextBox == null) return;
-                string url = localTtsUrlTextBox.Text?.Trim() ?? "";
-                ConfigManager.Instance.SetLocalTtsUrl(url);
-            }
-            catch (Exception ex) { Console.WriteLine($"Error updating Local TTS URL: {ex.Message}"); }
-        }
-
-        private void LocalTtsVoiceComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            try
-            {
-                if (_isInitializing || localTtsVoiceComboBox?.SelectedItem is not ComboBoxItem item) return;
-                string voiceId = item.Tag?.ToString() ?? item.Content?.ToString() ?? "";
-                ConfigManager.Instance.SetLocalTtsVoice(voiceId ?? "");
-                Console.WriteLine($"Local TTS voice set to: {voiceId}");
-            }
-            catch (Exception ex) { Console.WriteLine($"Error updating Local TTS voice: {ex.Message}"); }
-        }
-
-        private void LocalTtsModeComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            try
-            {
-                if (_isInitializing || localTtsModeComboBox?.SelectedItem is not ComboBoxItem item) return;
-                string mode = item.Tag?.ToString() ?? "Pretrained";
-                ConfigManager.Instance.SetLocalTtsMode(mode);
-                // Show Voice Assignment for both modes; hide VoiceClone-only rows when Silero
-                bool isVoiceClone = mode.Equals("VoiceClone", StringComparison.OrdinalIgnoreCase);
-                if (localTtsMainCharWavLabel != null) localTtsMainCharWavLabel.Visibility = isVoiceClone ? Visibility.Visible : Visibility.Collapsed;
-                if (localTtsMainCharWavPanel != null) localTtsMainCharWavPanel.Visibility = isVoiceClone ? Visibility.Visible : Visibility.Collapsed;
-                if (localTtsMainCharTxtLabel != null) localTtsMainCharTxtLabel.Visibility = isVoiceClone ? Visibility.Visible : Visibility.Collapsed;
-                if (localTtsMainCharTxtPanel != null) localTtsMainCharTxtPanel.Visibility = isVoiceClone ? Visibility.Visible : Visibility.Collapsed;
-                if (localTtsMaleVoicesExpander != null) localTtsMaleVoicesExpander.Visibility = isVoiceClone ? Visibility.Visible : Visibility.Collapsed;
-                if (localTtsFemaleVoicesExpander != null) localTtsFemaleVoicesExpander.Visibility = isVoiceClone ? Visibility.Visible : Visibility.Collapsed;
-                Console.WriteLine($"Local TTS mode set to: {mode}");
-            }
-            catch (Exception ex) { Console.WriteLine($"Error updating Local TTS mode: {ex.Message}"); }
-        }
-
-        private void LocalTtsMainCharWavButton_Click(object sender, RoutedEventArgs e)
-        {
-            var dlg = new Microsoft.Win32.OpenFileDialog { Filter = "WAV files|*.wav|All files|*.*", Title = "Select voice WAV" };
-            if (dlg.ShowDialog() == true && localTtsMainCharWavTextBox != null)
-            {
-                localTtsMainCharWavTextBox.Text = dlg.FileName;
-                ConfigManager.Instance.SetLocalTtsMainCharWav(dlg.FileName);
-            }
-        }
-
-        private void LocalTtsMainCharTxtButton_Click(object sender, RoutedEventArgs e)
-        {
-            var dlg = new Microsoft.Win32.OpenFileDialog { Filter = "Text files|*.txt|All files|*.*", Title = "Select transcript TXT" };
-            if (dlg.ShowDialog() == true && localTtsMainCharTxtTextBox != null)
-            {
-                localTtsMainCharTxtTextBox.Text = dlg.FileName;
-                ConfigManager.Instance.SetLocalTtsMainCharTxt(dlg.FileName);
-            }
-        }
-
-        private void LocalTtsMainCharNameTextBox_LostFocus(object sender, RoutedEventArgs e)
-        {
-            if (_isInitializing || localTtsMainCharNameTextBox == null) return;
-            ConfigManager.Instance.SetLocalTtsMainCharName(localTtsMainCharNameTextBox.Text?.Trim() ?? "");
-        }
-        private void LocalTtsMaleVoicesTextBox_LostFocus(object sender, RoutedEventArgs e)
-        {
-            if (_isInitializing || localTtsMaleVoicesTextBox == null) return;
-            ConfigManager.Instance.SetLocalTtsMaleVoices(localTtsMaleVoicesTextBox.Text?.Trim() ?? "");
-        }
-        private void LocalTtsFemaleVoicesTextBox_LostFocus(object sender, RoutedEventArgs e)
-        {
-            if (_isInitializing || localTtsFemaleVoicesTextBox == null) return;
-            ConfigManager.Instance.SetLocalTtsFemaleVoices(localTtsFemaleVoicesTextBox.Text?.Trim() ?? "");
-        }
-        private void LocalTtsCharacterGendersTextBox_LostFocus(object sender, RoutedEventArgs e)
-        {
-            if (_isInitializing || localTtsCharacterGendersTextBox == null) return;
-            ConfigManager.Instance.SetLocalTtsCharacterGenders(localTtsCharacterGendersTextBox.Text?.Trim() ?? "");
-        }
-
-        private async void LocalTtsTestConnectionButton_Click(object sender, RoutedEventArgs e)
-        {
-            if (localTtsUrlTextBox == null) return;
-            string url = localTtsUrlTextBox.Text?.Trim() ?? "";
-            if (string.IsNullOrEmpty(url))
-            {
-                MessageBox.Show("Введите URL TTS сервера.", "Local TTS", MessageBoxButton.OK, MessageBoxImage.Information);
-                return;
-            }
-            try
-            {
-                if (localTtsTestConnectionButton != null) localTtsTestConnectionButton.IsEnabled = false;
-                var (ok, message) = await LocalTtsService.TestConnectionAsync(url);
-                MessageBox.Show(message, "Local TTS", MessageBoxButton.OK, ok ? MessageBoxImage.Information : MessageBoxImage.Warning);
-            }
-            finally
-            {
-                if (localTtsTestConnectionButton != null) localTtsTestConnectionButton.IsEnabled = true;
-            }
-        }
-
-        private async void LocalTtsTestMainVoiceButton_Click(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                if (localTtsTestMainVoiceButton != null) localTtsTestMainVoiceButton.IsEnabled = false;
-                bool ok = await LocalTtsService.TestMainHeroVoiceAsync();
-                if (!ok) MessageBox.Show("Не удалось воспроизвести голос. Проверьте настройки и подключение к серверу.", "Local TTS", MessageBoxButton.OK, MessageBoxImage.Warning);
-            }
-            finally
-            {
-                if (localTtsTestMainVoiceButton != null) localTtsTestMainVoiceButton.IsEnabled = true;
-            }
-        }
-
-        private async void LocalTtsTestMaleVoiceButton_Click(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                if (localTtsTestMaleVoiceButton != null) localTtsTestMaleVoiceButton.IsEnabled = false;
-                bool ok = await LocalTtsService.TestMaleVoiceAsync();
-                if (!ok) MessageBox.Show("Не удалось воспроизвести мужской голос. Проверьте наличие men-*.wav в asset\\RussianArtistsDub.", "Local TTS", MessageBoxButton.OK, MessageBoxImage.Warning);
-            }
-            finally
-            {
-                if (localTtsTestMaleVoiceButton != null) localTtsTestMaleVoiceButton.IsEnabled = true;
-            }
-        }
-
-        private async void LocalTtsTestFemaleVoiceButton_Click(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                if (localTtsTestFemaleVoiceButton != null) localTtsTestFemaleVoiceButton.IsEnabled = false;
-                bool ok = await LocalTtsService.TestFemaleVoiceAsync();
-                if (!ok) MessageBox.Show("Не удалось воспроизвести женский голос. Проверьте наличие wom-*.wav в asset\\RussianArtistsDub.", "Local TTS", MessageBoxButton.OK, MessageBoxImage.Warning);
-            }
-            finally
-            {
-                if (localTtsTestFemaleVoiceButton != null) localTtsTestFemaleVoiceButton.IsEnabled = true;
             }
         }
 
@@ -4126,7 +3792,7 @@ namespace RSTGameTranslation
                         else
                         {
                             // Clear saved areas in config if we have none
-                            ConfigManager.Instance.SaveTranslationAreas(new List<Rect>(), selectedText);
+                            ConfigManager.Instance.SaveTranslationAreas(new List<TranslationAreaInfo>(), selectedText);
                             Console.WriteLine("Cleared translation areas in config");
                         }
                         // Show status
@@ -4180,7 +3846,7 @@ namespace RSTGameTranslation
                 if (File.Exists(filePath))
                 {
                     // Get saved areas from config
-                    List<Rect> areas = ConfigManager.Instance.GetTranslationAreas(filePath);
+                    List<TranslationAreaInfo> areas = ConfigManager.Instance.GetTranslationAreas(filePath);
                     if (areas.Count > 0)
                     {
                         // Update our areas list
@@ -4511,6 +4177,74 @@ namespace RSTGameTranslation
             }
         }
 
+        // Load exclude regions from ConfigManager
+        private void LoadExcludeRegions()
+        {
+            try
+            {
+                // Get regions from MainWindow (which loads from ConfigManager)
+                var regions = MainWindow.Instance.excludeRegions;
+                
+                // Populate the list view
+                excludeRegionsListView.ItemsSource = regions;
+                
+                // Set the show exclude regions checkbox
+                showExcludeRegionsCheckBox.IsChecked = MainWindow.Instance.GetShowExcludeRegions();
+                
+                Console.WriteLine($"Loaded {regions.Count} exclude regions from config");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error loading exclude regions: {ex.Message}");
+            }
+        }
+
+        // Add a new exclude region
+        private void AddExcludeRegionButton_Click(object sender, RoutedEventArgs e)
+        {
+            // Hide settings window
+            this.Hide();
+            
+            // Trigger exclude region selection
+            MainWindow.Instance.ToggleExcludeRegionSelector();
+            
+            
+            // Reload to show the new region
+            LoadExcludeRegions();
+        }
+
+        // Clear all exclude regions
+        private void ClearExcludeRegionsButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                MainWindow.Instance.ClearExcludeRegions();
+                excludeRegionsListView.ItemsSource = null;
+                excludeRegionsListView.ItemsSource = MainWindow.Instance.excludeRegions;
+                Console.WriteLine("All exclude regions cleared from settings");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error clearing exclude regions: {ex.Message}");
+            }
+        }
+
+        // Show exclude regions checkbox checked
+        private void ShowExcludeRegionsCheckBox_Checked(object sender, RoutedEventArgs e)
+        {
+            if (_isInitializing) return;
+            bool show = showExcludeRegionsCheckBox.IsChecked ?? true;
+            MainWindow.Instance.SetShowExcludeRegions(show);
+        }
+
+        // Show exclude regions checkbox unchecked
+        private void ShowExcludeRegionsCheckBox_Unchecked(object sender, RoutedEventArgs e)
+        {
+            if (_isInitializing) return;
+            bool show = showExcludeRegionsCheckBox.IsChecked ?? true;
+            MainWindow.Instance.SetShowExcludeRegions(show);
+        }
+
         private void ShowIconSignal_CheckedChanged(object sender, RoutedEventArgs e)
         {
             bool enabled = showIconSignalCheckBox.IsChecked ?? false;
@@ -4539,43 +4273,20 @@ namespace RSTGameTranslation
             bool enabled = audioServiceAutoTranslateCheckBox.IsChecked ?? false;
             // ConfigManager.Instance.SetAudioServiceAutoTranslateEnabled(enabled);
             Console.WriteLine($"Settings window: Audio service auto-translate set to {enabled}");
-            
-            if (enabled && !localWhisperService.Instance.IsRunning && !LocalSileroSTTService.Instance.IsRunning)
+            if (enabled && !localWhisperService.Instance.IsRunning)
             {
-                // Check if local Silero STT is enabled
-                bool useLocalSilero = ConfigManager.Instance.GetLocalSTTEnabled();
-                
-                if (useLocalSilero)
+                // Start the local Whisper service if not already running
+                await localWhisperService.Instance.StartServiceAsync((original, translated) =>
                 {
-                    Console.WriteLine("[SettingsWindow] Starting Local Silero STT service...");
-                    await LocalSileroSTTService.Instance.StartServiceAsync((original, translated) =>
-                    {
-                        Console.WriteLine($"Silero STT detected: {original}");
-                    });
-                    Console.WriteLine("Local Silero STT Service started");
-                }
-                else
-                {
-                    Console.WriteLine("[SettingsWindow] Starting Local Whisper service...");
-                    await localWhisperService.Instance.StartServiceAsync((original, translated) =>
-                    {
-                        Console.WriteLine($"Whisper detected: {original}");
-                    });
-                    Console.WriteLine("Local Whisper Service started");
-                }
+                    Console.WriteLine($"Whisper detected: {original}");
+                });
+                Console.WriteLine("Local Whisper Service started");
             }
-            else if (!enabled)
+            else if (!enabled && localWhisperService.Instance.IsRunning)
             {
-                if (localWhisperService.Instance.IsRunning)
-                {
-                    localWhisperService.Instance.Stop();
-                    Console.WriteLine("Local Whisper Service stopped");
-                }
-                if (LocalSileroSTTService.Instance.IsRunning)
-                {
-                    LocalSileroSTTService.Instance.Stop();
-                    Console.WriteLine("Local Silero STT Service stopped");
-                }
+                // Stop the local Whisper service if it was running
+                localWhisperService.Instance.Stop();
+                Console.WriteLine("Local Whisper Service stopped");
             }
         }
 
@@ -4856,20 +4567,18 @@ namespace RSTGameTranslation
             Console.WriteLine($"Exclude character name set to {enabled}");
         }
 
-        private void TtsVolumeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
-        {
-            if (ttsVolumeSlider == null || _isInitializing) return;
-            float vol = (float)ttsVolumeSlider.Value;
-            ConfigManager.Instance.SetTtsVolume(vol);
-            if (ttsVolumeValueText != null) ttsVolumeValueText.Text = $"{(int)(vol * 100)}%";
-            Console.WriteLine($"TTS volume set to {(int)(vol * 100)}%");
-        }
-
         private void AutoSetOverlayBackgroundColorcheckBox_CheckedChanged(object sender, RoutedEventArgs e)
         {
             bool enabled = autoSetOverlayBackgroundColorcheckBox.IsChecked ?? true;
             ConfigManager.Instance.SetAutoSetOverlayBackground(enabled);
             Console.WriteLine($"Auto set overlay background color set to {enabled}");
+        }
+
+        private void AutoMergeOverlappingTextCheckBox_CheckedChanged(object sender, RoutedEventArgs e)
+        {
+            bool enabled = autoMergeOverlappingTextCheckBox.IsChecked ?? true;
+            ConfigManager.Instance.SetAutoMergeOverlappingText(enabled);
+            Console.WriteLine($"Auto merge overlapping text set to {enabled}");
         }
 
         private void SetHotKeyEnableCheckBox_CheckChange(object sender, RoutedEventArgs e)
@@ -5010,54 +4719,6 @@ namespace RSTGameTranslation
             catch (Exception ex)
             {
                 Console.WriteLine($"Error updating whisper thread count: {ex.Message}");
-            }
-        }
-
-        // Local Silero STT event handlers
-        private void LocalSileroSTTEnabledCheckBox_CheckedChanged(object sender, RoutedEventArgs e)
-        {
-            if (_isInitializing) return;
-
-            try
-            {
-                bool enabled = localSileroSTTEnabledCheckBox.IsChecked ?? false;
-                ConfigManager.Instance.SetLocalSTTEnabled(enabled);
-                Console.WriteLine($"Local Silero STT enabled: {enabled}");
-                
-                // Enable/disable URL field based on checkbox
-                localSileroSTTUrlTextBox.IsEnabled = enabled;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error updating Local STT enabled: {ex.Message}");
-            }
-        }
-
-        private void LocalSileroSTTUrlTextBox_LostFocus(object sender, RoutedEventArgs e)
-        {
-            if (_isInitializing) return;
-
-            try
-            {
-                string url = localSileroSTTUrlTextBox.Text?.Trim() ?? "";
-                if (!string.IsNullOrEmpty(url))
-                {
-                    // Basic URL validation
-                    if (url.StartsWith("http://") || url.StartsWith("https://"))
-                    {
-                        ConfigManager.Instance.SetLocalSTTUrl(url);
-                        Console.WriteLine($"Local STT URL set to: {url}");
-                    }
-                    else
-                    {
-                        MessageBox.Show("Please enter a valid URL (starting with http:// or https://)", "Invalid URL", MessageBoxButton.OK, MessageBoxImage.Warning);
-                        localSileroSTTUrlTextBox.Text = ConfigManager.Instance.GetLocalSTTUrl();
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error updating Local STT URL: {ex.Message}");
             }
         }
 
@@ -5259,208 +4920,5 @@ namespace RSTGameTranslation
         //         isNeedShowWarningMangaMode = true;
         //     }
         // }
-
-        // STT Test Handlers
-        private async void TestSttButton_Click(object sender, RoutedEventArgs e)
-        {
-            if (_isInitializing) return;
-
-            // Open file dialog for audio selection
-            using (var dlg = new System.Windows.Forms.OpenFileDialog())
-            {
-                dlg.Title = "Select Audio File for STT Test";
-                dlg.Filter = "Audio Files (*.wav;*.mp3;*.m4a;*.flac;*.ogg)|*.wav;*.mp3;*.m4a;*.flac;*.ogg|All Files (*.*)|*.*";
-                dlg.CheckFileExists = true;
-
-                if (dlg.ShowDialog() == System.Windows.Forms.DialogResult.OK)
-                {
-                    string filePath = dlg.FileName;
-                    testSttResultTextBox.Text = $"Processing: {Path.GetFileName(filePath)}...\n";
-
-                    try
-                    {
-                        // Use NAudio to read the audio file and convert to PCM 16-bit mono 16kHz
-                        using (var audioFileReader = new NAudio.Wave.AudioFileReader(filePath))
-                        {
-                            // Resample to 16kHz
-                            var resampler = new NAudio.Wave.SampleProviders.WdlResamplingSampleProvider(
-                                audioFileReader.ToSampleProvider(), 16000);
-
-                            // Convert to mono
-                            var monoProvider = resampler.ToMono();
-
-                            // Read all samples
-                            float[] readBuffer = new float[4000];
-                            List<float> allSamples = new List<float>();
-                            int samplesRead;
-                            while ((samplesRead = monoProvider.Read(readBuffer, 0, readBuffer.Length)) > 0)
-                            {
-                                allSamples.AddRange(readBuffer.Take(samplesRead));
-                            }
-
-                            // Process with Whisper
-                            if (localWhisperService.Instance.IsRunning == false && 
-                                localWhisperService.Instance.GetProcessor() != null)
-                            {
-                                testSttResultTextBox.Text += "Processing audio...\n";
-
-                                // Get the processor from the service
-                                var processor = localWhisperService.Instance.GetProcessor();
-                                if (processor != null)
-                                {
-                                    testSttResultTextBox.Text += "Running Whisper STT...\n\n";
-                                    testSttResultTextBox.Text += "=== Recognized Text ===\n";
-
-                                    await foreach (var result in processor.ProcessAsync(allSamples.ToArray()))
-                                    {
-                                        if (!string.IsNullOrEmpty(result.Text.Trim()))
-                                        {
-                                            testSttResultTextBox.Text += result.Text.Trim() + "\n";
-                                        }
-                                    }
-
-                                    testSttResultTextBox.Text += "\n=== Test Complete ===\n";
-                                }
-                                else
-                                {
-                                    testSttResultTextBox.Text += "Error: Whisper processor not initialized.\n";
-                                }
-                            }
-                            else if (localWhisperService.Instance.IsRunning)
-                            {
-                                testSttResultTextBox.Text += "Error: Audio service is currently running. Please stop it first.\n";
-                            }
-                            else
-                            {
-                                testSttResultTextBox.Text += "Error: Whisper processor not available. Check audio settings.\n";
-                            }
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        testSttResultTextBox.Text += $"Error: {ex.Message}\n\nStack trace:\n{ex.StackTrace}\n";
-                    }
-                }
-            }
-        }
-
-        private void ClearTestResultButton_Click(object sender, RoutedEventArgs e)
-        {
-            testSttResultTextBox.Text = "";
-        }
-
-        // Load available audio capture devices based on selected mode (loopback or microphone)
-        private void LoadAvailableAudioDevices()
-        {
-            try
-            {
-                audioCaptureDeviceComboBox.Items.Clear();
-
-                // Add "Default" option
-                var defaultItem = new ComboBoxItem { Content = "(Default)", Tag = "" };
-                audioCaptureDeviceComboBox.Items.Add(defaultItem);
-
-                // Get current capture mode
-                string mode = ConfigManager.Instance.GetAudioCaptureMode();
-                string selectedDeviceName;
-                
-                if (mode == "microphone")
-                {
-                    // Enumerate audio input devices (microphones) using WaveIn API
-                    Console.WriteLine("Loading microphone devices via WaveIn API...");
-                    for (int i = 0; i < NAudio.Wave.WaveIn.DeviceCount; i++)
-                    {
-                        try
-                        {
-                            var caps = NAudio.Wave.WaveIn.GetCapabilities(i);
-                            string itemName = $"{i}: {caps.ProductName}";
-                            var item = new ComboBoxItem { Content = itemName, Tag = caps.ProductName };
-                            audioCaptureDeviceComboBox.Items.Add(item);
-                        }
-                        catch { }
-                    }
-
-                    selectedDeviceName = ConfigManager.Instance.GetAudioMicrophoneDevice();
-                }
-                else
-                {
-                    // Enumerate audio output devices (for loopback) using WASAPI
-                    Console.WriteLine("Loading loopback (speaker output) devices...");
-                    using (var enumerator = new NAudio.CoreAudioApi.MMDeviceEnumerator())
-                    {
-                        var devices = enumerator.EnumerateAudioEndPoints(NAudio.CoreAudioApi.DataFlow.Render, NAudio.CoreAudioApi.DeviceState.Active);
-
-                        foreach (var device in devices)
-                        {
-                            var item = new ComboBoxItem { Content = device.FriendlyName, Tag = device.FriendlyName };
-                            audioCaptureDeviceComboBox.Items.Add(item);
-                        }
-                    }
-
-                    selectedDeviceName = ConfigManager.Instance.GetAudioCaptureDevice();
-                }
-
-                // Select the configured device
-                ComboBoxItem selectedItem = null;
-
-                if (string.IsNullOrEmpty(selectedDeviceName))
-                {
-                    selectedItem = (ComboBoxItem)audioCaptureDeviceComboBox.Items[0]; // Default
-                }
-                else
-                {
-                    selectedItem = audioCaptureDeviceComboBox.Items.Cast<ComboBoxItem>()
-                        .FirstOrDefault(i => (string)i.Tag == selectedDeviceName);
-                    if (selectedItem == null)
-                    {
-                        selectedItem = (ComboBoxItem)audioCaptureDeviceComboBox.Items[0]; // Fallback to default
-                    }
-                }
-
-                audioCaptureDeviceComboBox.SelectedItem = selectedItem;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error loading audio devices: {ex.Message}");
-                testSttResultTextBox.Text += $"Error loading audio devices: {ex.Message}\n";
-            }
-        }
-
-        // Audio capture mode changed (Loopback vs Microphone)
-        private void AudioCaptureModeComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            if (_isInitializing) return;
-
-            if (audioCaptureModeComboBox.SelectedItem is ComboBoxItem selectedItem)
-            {
-                string mode = (string)selectedItem.Tag ?? "loopback";
-                ConfigManager.Instance.SetAudioCaptureMode(mode);
-                Console.WriteLine($"Audio capture mode changed to: {mode}");
-                
-                // Reload audio device list based on selected mode
-                LoadAvailableAudioDevices();
-            }
-        }
-
-        // Audio device selection changed
-        private void AudioCaptureDeviceComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            if (_isInitializing) return;
-
-            if (audioCaptureDeviceComboBox.SelectedItem is ComboBoxItem selectedItem)
-            {
-                string deviceName = (string)selectedItem.Tag ?? "";
-                string mode = ConfigManager.Instance.GetAudioCaptureMode();
-                
-                if (mode == "microphone")
-                {
-                    ConfigManager.Instance.SetAudioMicrophoneDevice(deviceName);
-                }
-                else
-                {
-                    ConfigManager.Instance.SetAudioCaptureDevice(deviceName);
-                }
-            }
-        }
     }
 }
