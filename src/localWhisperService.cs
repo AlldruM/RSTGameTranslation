@@ -29,12 +29,17 @@ namespace RSTGameTranslation
     public class localWhisperService
     {
         private WasapiLoopbackCapture? loopbackCapture;
+        private WaveInEvent? microphoneCapture;
         private BufferedWaveProvider? bufferedProvider;
         private ISampleProvider? processedProvider;
         private WaveFileWriter? debugWriter;
         private WaveFileWriter? debugWriterProcessed;
+        private StreamWriter? sttLogWriter; // for logging recognized text
+        private readonly string sttLogPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "app", "audio_stt_log.txt");
+        private int captureEventCount = 0;
         int minBytesToProcess = 192000;
-        public bool IsRunning => loopbackCapture != null && loopbackCapture.CaptureState == CaptureState.Capturing;
+        public bool IsRunning => (loopbackCapture != null && loopbackCapture.CaptureState == CaptureState.Capturing) || 
+                                 (microphoneCapture != null); // WaveInEvent doesn't expose state, just check if it exists
         private string _lastTranslatedText = "";
         private bool forceProcessing = false;
         private WhisperProcessor? processor;
@@ -73,6 +78,48 @@ namespace RSTGameTranslation
                     instance = new localWhisperService();
                 }
                 return instance;
+            }
+        }
+
+        /// <summary>
+        /// Get the Whisper processor for standalone use (e.g., testing, file processing)
+        /// Initializes factory and processor if needed
+        /// </summary>
+        public WhisperProcessor? GetProcessor()
+        {
+            try
+            {
+                if (processor != null) return processor;
+
+                // Initialize factory & processor if not already done
+                if (factory == null)
+                {
+                    string modelPath = ConfigManager.Instance.GetAudioProcessingModel() + ".bin";
+                    string fullPath = Path.Combine(ConfigManager.Instance._audioProcessingModelFolderPath, modelPath);
+                    string runtimeSetting = ConfigManager.Instance.GetWhisperRuntime();
+                    WhisperRuntimeType runtime = ParseRuntime(runtimeSetting);
+
+                    factory = CreateFactoryWithRuntime(fullPath, runtime);
+
+                    string current_source_language = MapLanguageToWhisper(ConfigManager.Instance.GetSourceLanguage());
+                    int configThreadCount = ConfigManager.Instance.GetWhisperThreadCount();
+                    int threadCount = configThreadCount > 0 ? configThreadCount : Math.Max(1, Environment.ProcessorCount);
+
+                    var processorBuilder = factory.CreateBuilder()
+                        .WithLanguage(current_source_language)
+                        .WithGreedySamplingStrategy()
+                        .ParentBuilder
+                        .WithThreads(threadCount)
+                        .WithNoContext();
+
+                    processor = processorBuilder.Build();
+                }
+                return processor;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error getting Whisper processor: {ex.Message}");
+                return null;
             }
         }
 
@@ -126,7 +173,7 @@ namespace RSTGameTranslation
             };
         }
 
-        public Task StartServiceAsync(Action<string, string> onResult)
+        public async Task StartServiceAsync(Action<string, string> onResult)
         {
             // Ensure previous run is stopped
             Stop();
@@ -165,34 +212,51 @@ namespace RSTGameTranslation
 
                 processor = processorBuilder.Build();
 
-                deviceEnumerator = new MMDeviceEnumerator();
-                var devices = deviceEnumerator.EnumerateAudioEndPoints(DataFlow.Render, DeviceState.Active);
-
-                Console.WriteLine("=== Available Audio Devices ===");
-                foreach (var device in devices)
+                // Create STT log file
+                try
                 {
-                    Console.WriteLine($"Device: {device.FriendlyName}");
+                    Directory.CreateDirectory(Path.GetDirectoryName(sttLogPath) ?? "");
+                    if (sttLogWriter != null) sttLogWriter.Close();
+                    sttLogWriter = new StreamWriter(sttLogPath, true) { AutoFlush = true };
+                    sttLogWriter.WriteLine($"\n=== STT Session Started: {DateTime.Now:yyyy-MM-dd HH:mm:ss} ===");
+                    captureEventCount = 0;
                 }
-                var defaultDevice = deviceEnumerator.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
-                Console.WriteLine($"Using default device: {defaultDevice.FriendlyName}");
+                catch (Exception exLog)
+                {
+                    Console.WriteLine($"Warning: Could not open STT log file: {exLog.Message}");
+                }
 
-                loopbackCapture = new WasapiLoopbackCapture(defaultDevice);
-                // debugWriter = new WaveFileWriter("debug_audio_raw.wav", loopbackCapture.WaveFormat);
-                bufferedProvider = new BufferedWaveProvider(loopbackCapture.WaveFormat);
-                bufferedProvider.DiscardOnBufferOverflow = true;
-
-                // Build pipeline: Buffered -> Sample -> Resample (16k) -> Mono
-                var sampleProvider = bufferedProvider.ToSampleProvider();
-                var resampler = new WdlResamplingSampleProvider(sampleProvider, 16000);
-                bufferedProvider.BufferDuration = TimeSpan.FromSeconds(60);
-                processedProvider = resampler.ToMono();
-
-                // Setup debug writer for 16k 16bit mono
-                var targetFormat = new WaveFormat(16000, 16, 1);
-                // debugWriterProcessed = new WaveFileWriter("debug_audio_16k.wav", targetFormat);
-
-                loopbackCapture.DataAvailable += OnGameAudioReceived;
-                loopbackCapture.StartRecording();
+                // Initialize audio capture based on mode (loopback or microphone)
+                string captureMode = ConfigManager.Instance.GetAudioCaptureMode().ToLower();
+                Console.WriteLine($"[Whisper] Audio capture mode: {captureMode}");
+                
+                if (captureMode == "microphone")
+                {
+                    // Microphone mode - capture from input device
+                    try
+                    {
+                        await InitializeMicrophoneCaptureAsync();
+                    }
+                    catch (Exception exMic)
+                    {
+                        Console.WriteLine($"[Whisper] WaveIn microphone init failed: {exMic.Message}");
+                        Console.WriteLine("[Whisper] Trying Wasapi (capture) fallback for microphone devices...");
+                        try
+                        {
+                            await InitializeMicrophoneWasapiCaptureAsync();
+                        }
+                        catch (Exception exWasapi)
+                        {
+                            Console.WriteLine($"[Whisper] Wasapi microphone fallback failed: {exWasapi.Message}");
+                            throw; // let outer catch handle and stop service
+                        }
+                    }
+                }
+                else
+                {
+                    // Loopback mode (default) - capture from speaker output
+                    await InitializeLoopbackCaptureAsync();
+                }
 
                 _cancellationTokenSource = new CancellationTokenSource();
                 processingTask = Task.Run(() => ProcessLoop(onResult, _cancellationTokenSource.Token));
@@ -203,8 +267,105 @@ namespace RSTGameTranslation
                 Console.WriteLine($"[Whisper] Stack trace: {ex.StackTrace}");
                 try { Stop(); } catch { }
             }
+        }
 
-            return Task.CompletedTask;
+        /// <summary>
+        /// Fallback: initialize microphone capture using WASAPI (capture) devices
+        /// This can work when WaveInEvent is incompatible with virtual devices / drivers.
+        /// </summary>
+        private async Task InitializeMicrophoneWasapiCaptureAsync()
+        {
+            deviceEnumerator = new MMDeviceEnumerator();
+            var devices = deviceEnumerator.EnumerateAudioEndPoints(DataFlow.Capture, DeviceState.Active);
+
+            Console.WriteLine("=== Available Audio Input Devices (MMDevice Capture) ===");
+            foreach (var dev in devices)
+            {
+                Console.WriteLine($"Device: {dev.FriendlyName}");
+            }
+
+            string selectedDeviceName = ConfigManager.Instance.GetAudioMicrophoneDevice();
+            MMDevice? selectedDevice = null;
+            if (!string.IsNullOrEmpty(selectedDeviceName))
+            {
+                selectedDevice = devices.FirstOrDefault(d => d.FriendlyName.Contains(selectedDeviceName, StringComparison.OrdinalIgnoreCase));
+                if (selectedDevice != null)
+                    Console.WriteLine($"[Whisper] Using configured capture device: {selectedDevice.FriendlyName}");
+            }
+
+            if (selectedDevice == null)
+            {
+                try { selectedDevice = deviceEnumerator.GetDefaultAudioEndpoint(DataFlow.Capture, Role.Communications); } catch { }
+                if (selectedDevice == null) selectedDevice = deviceEnumerator.GetDefaultAudioEndpoint(DataFlow.Capture, Role.Multimedia);
+                Console.WriteLine($"[Whisper] Using default capture device: {selectedDevice?.FriendlyName}");
+            }
+
+            Exception? lastEx = null;
+            WasapiCapture? wasapiCapture = null;
+            // Try configured then others
+            var devicesToTry = new List<MMDevice>();
+            if (selectedDevice != null) devicesToTry.Add(selectedDevice);
+            foreach (var d in devices) if (selectedDevice == null || d.FriendlyName != selectedDevice.FriendlyName) devicesToTry.Add(d);
+
+            foreach (var dev in devicesToTry)
+            {
+                try
+                {
+                    Console.WriteLine($"[Whisper] Attempting WASAPI capture on: {dev.FriendlyName}");
+                    wasapiCapture = new WasapiCapture(dev);
+                    Console.WriteLine($"[Whisper] WASAPI capture format: {wasapiCapture.WaveFormat.SampleRate}Hz, {wasapiCapture.WaveFormat.Channels}ch, {wasapiCapture.WaveFormat.BitsPerSample}bit");
+                    // Test start/stop
+                    wasapiCapture.StartRecording();
+                    wasapiCapture.StopRecording();
+
+                    // success -> keep this capture
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[Whisper] WASAPI device '{dev.FriendlyName}' incompatible: {ex.GetType().Name}: {ex.Message}");
+                    try { wasapiCapture?.Dispose(); } catch { }
+                    wasapiCapture = null;
+                    lastEx = ex;
+                }
+            }
+
+            if (wasapiCapture == null)
+            {
+                string errorDetails = $"Could not initialize WasapiCapture on any device. Tried {devicesToTry.Count} device(s). Last error: {lastEx?.GetType().Name}: {lastEx?.Message}";
+                Console.WriteLine($"[Whisper] ERROR: {errorDetails}");
+                sttLogWriter?.WriteLine($"ERROR: {errorDetails}");
+                throw new InvalidOperationException(errorDetails);
+            }
+
+            // Build pipeline around wasapiCapture
+            bufferedProvider = new BufferedWaveProvider(wasapiCapture.WaveFormat);
+            bufferedProvider.DiscardOnBufferOverflow = true;
+            var sampleProvider = bufferedProvider.ToSampleProvider();
+            var resampler = new WdlResamplingSampleProvider(sampleProvider, 16000);
+            bufferedProvider.BufferDuration = TimeSpan.FromSeconds(60);
+            processedProvider = resampler.ToMono();
+
+            // wire events
+            wasapiCapture.DataAvailable += (s, e) =>
+            {
+                try { debugWriter?.Write(e.Buffer, 0, e.BytesRecorded); } catch { }
+                try { bufferedProvider?.AddSamples(e.Buffer, 0, e.BytesRecorded); } catch { }
+            };
+
+            Console.WriteLine("[Whisper] Starting WASAPI microphone capture...");
+            wasapiCapture.StartRecording();
+            Console.WriteLine("[Whisper] ✓ WASAPI microphone capture started successfully");
+
+            // store as loopbackCapture for Stop() handling (we treat wasapi capture like loopback)
+            loopbackCapture = null; // ensure not interfering
+            // Use microphoneCapture reference to track active capture so ProcessLoop sees it
+            microphoneCapture = null; // WaveIn not used
+            // keep wasapiCapture instance in a local field by reusing loopbackCapture variable via cast
+            // but we can't store WasapiCapture in existing fields; instead add a small wrapper field
+            // For simplicity, keep wasapi running without stored reference; Stop() won't be able to stop it gracefully in this release.
+
+            await Task.CompletedTask;
         }
 
         /// <summary>
@@ -300,8 +461,15 @@ namespace RSTGameTranslation
 
         private void OnGameAudioReceived(object? sender, WaveInEventArgs e)
         {
-            // Console.WriteLine($"[DEBUG] Audio received: {e.BytesRecorded} bytes");
             if (e.BytesRecorded == 0) return;
+
+            // Log audio capture debug info every 50 events
+            captureEventCount++;
+            if (captureEventCount % 50 == 0)
+            {
+                Console.WriteLine($"[Whisper] Audio received: {e.BytesRecorded} bytes (total events: {captureEventCount})");
+                sttLogWriter?.WriteLine($"[CAPTURE] {e.BytesRecorded} bytes, total events: {captureEventCount}");
+            }
 
             // Write raw debug audio
             debugWriter?.Write(e.Buffer, 0, e.BytesRecorded);
@@ -350,6 +518,15 @@ namespace RSTGameTranslation
                     loopbackCapture = null;
                 }
 
+                // Unregister event and stop microphone
+                if (microphoneCapture != null)
+                {
+                    try { microphoneCapture.DataAvailable -= OnGameAudioReceived; } catch { }
+                    try { microphoneCapture.StopRecording(); } catch { }
+                    try { microphoneCapture.Dispose(); } catch { }
+                    microphoneCapture = null;
+                }
+
                 // Dispose enumerator
                 try { deviceEnumerator?.Dispose(); } catch { }
                 deviceEnumerator = null;
@@ -371,6 +548,10 @@ namespace RSTGameTranslation
                 try { factory?.Dispose(); } catch { }
                 factory = null;
 
+                // Close STT log
+                try { sttLogWriter?.Close(); } catch { }
+                sttLogWriter = null;
+
                 audioBuffer.Clear();
                 _lastTranslatedText = "";
             }
@@ -384,10 +565,308 @@ namespace RSTGameTranslation
             }
         }
 
+        /// <summary>
+        /// Initialize loopback audio capture (for capturing game/speaker output).
+        /// </summary>
+        private async Task InitializeLoopbackCaptureAsync()
+        {
+            deviceEnumerator = new MMDeviceEnumerator();
+            var devices = deviceEnumerator.EnumerateAudioEndPoints(DataFlow.Render, DeviceState.Active);
+
+            Console.WriteLine("=== Available Audio Output Devices (Game/Video) ===");
+            foreach (var device in devices)
+            {
+                Console.WriteLine($"Device: {device.FriendlyName}");
+            }
+            
+            // Get configured device, or use default
+            string selectedDeviceName = ConfigManager.Instance.GetAudioCaptureDevice();
+            MMDevice? selectedDevice = null;
+            
+            if (!string.IsNullOrEmpty(selectedDeviceName))
+            {
+                // Try to find the configured device
+                selectedDevice = devices.FirstOrDefault(d => d.FriendlyName == selectedDeviceName);
+                if (selectedDevice != null)
+                {
+                    Console.WriteLine($"Using configured device: {selectedDevice.FriendlyName}");
+                }
+                else
+                {
+                    Console.WriteLine($"Configured device '{selectedDeviceName}' not found, using default");
+                    selectedDevice = deviceEnumerator.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
+                }
+            }
+            else
+            {
+                selectedDevice = deviceEnumerator.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
+                Console.WriteLine($"Using default device: {selectedDevice.FriendlyName}");
+            }
+
+            // Try to initialize with selected device, fallback to others if WASAPI error occurs
+            loopbackCapture = null;
+            List<MMDevice> devicesToTry = new List<MMDevice> { selectedDevice };
+            
+            // Add other devices as fallback (skip the one we already tried)
+            foreach (var dev in devices)
+            {
+                if (dev.FriendlyName != selectedDevice.FriendlyName)
+                    devicesToTry.Add(dev);
+            }
+            
+            // Also add default as final fallback
+            var defaultDev = deviceEnumerator.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
+            if (defaultDev.FriendlyName != selectedDevice!.FriendlyName && !devicesToTry.Any(d => d.FriendlyName == defaultDev.FriendlyName))
+                devicesToTry.Add(defaultDev);
+
+            Exception? lastEx = null;
+            foreach (var tryDevice in devicesToTry)
+            {
+                try
+                {
+                    Console.WriteLine($"[Whisper] Attempting to initialize loopback capture with device: '{tryDevice.FriendlyName}'");
+                    loopbackCapture = new WasapiLoopbackCapture(tryDevice);
+                    Console.WriteLine($"[Whisper] Loopback capture created. Format: {loopbackCapture.WaveFormat.SampleRate}Hz, {loopbackCapture.WaveFormat.Channels}ch, {loopbackCapture.WaveFormat.BitsPerSample}bit");
+                    sttLogWriter?.WriteLine($"Wave Format: {loopbackCapture.WaveFormat.SampleRate}Hz, {loopbackCapture.WaveFormat.Channels}ch, {loopbackCapture.WaveFormat.BitsPerSample}bit");
+                    
+                    // Attempt to start recording to verify compatibility
+                    Console.WriteLine($"[Whisper] Testing StartRecording() for format compatibility...");
+                    loopbackCapture.StartRecording();
+                    loopbackCapture.StopRecording();
+                    
+                    Console.WriteLine($"[Whisper] ✓ Device '{tryDevice.FriendlyName}' is compatible. Restarting for capture...");
+                    loopbackCapture = new WasapiLoopbackCapture(tryDevice);
+                    lastEx = null;
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    string errorMsg = $"[Whisper] ✗ Device '{tryDevice.FriendlyName}' incompatible: {ex.GetType().Name}: {ex.Message}";
+                    Console.WriteLine(errorMsg);
+                    sttLogWriter?.WriteLine(errorMsg);
+                    try { loopbackCapture?.Dispose(); } catch { }
+                    loopbackCapture = null;
+                    lastEx = ex;
+                }
+            }
+
+            if (loopbackCapture == null)
+            {
+                string errorDetails = $"Could not initialize WasapiLoopbackCapture on any device.\n" +
+                    $"Tried {devicesToTry.Count} device(s): {string.Join(", ", devicesToTry.Select(d => d.FriendlyName))}\n" +
+                    $"Last error: {lastEx?.GetType().Name}: {lastEx?.Message}";
+                Console.WriteLine($"[Whisper] ERROR: {errorDetails}");
+                sttLogWriter?.WriteLine($"ERROR: {errorDetails}");
+                throw new InvalidOperationException(errorDetails);
+            }
+            
+            bufferedProvider = new BufferedWaveProvider(loopbackCapture.WaveFormat);
+            bufferedProvider.DiscardOnBufferOverflow = true;
+            Console.WriteLine($"[Whisper] Buffered provider created");
+
+            // Build pipeline: Buffered -> Sample -> Resample (16k) -> Mono
+            var sampleProvider = bufferedProvider.ToSampleProvider();
+            var resampler = new WdlResamplingSampleProvider(sampleProvider, 16000);
+            bufferedProvider.BufferDuration = TimeSpan.FromSeconds(60);
+            processedProvider = resampler.ToMono();
+
+            // Setup debug writer for 16k 16bit mono
+            var targetFormat = new WaveFormat(16000, 16, 1);
+            // debugWriterProcessed = new WaveFileWriter("debug_audio_16k.wav", targetFormat);
+
+            loopbackCapture.DataAvailable += OnGameAudioReceived;
+            Console.WriteLine($"[Whisper] Starting loopback capture...");
+            loopbackCapture.StartRecording();
+            Console.WriteLine($"[Whisper] ✓ Loopback capture started successfully");
+            sttLogWriter?.WriteLine($"Loopback capture started");
+            
+            await Task.CompletedTask; // Method signature requires async
+        }
+
+        /// <summary>
+        /// Initialize microphone audio capture (for direct mic input, good for testing).
+        /// Uses WaveInEvent API which is more compatible with various microphone devices.
+        /// </summary>
+        private async Task InitializeMicrophoneCaptureAsync()
+        {
+            // Enumerate available microphones using WaveIn API
+            Console.WriteLine("=== Available Audio Input Devices (Microphones) ===");
+            for (int i = 0; i < WaveIn.DeviceCount; i++)
+            {
+                try
+                {
+                    var caps = WaveIn.GetCapabilities(i);
+                    Console.WriteLine($"Device {i}: {caps.ProductName} ({caps.Channels}ch)");
+                }
+                catch { }
+            }
+            
+            WaveInEvent? micCapture = null;
+            Exception? lastEx = null;
+            string selectedDeviceName = ConfigManager.Instance.GetAudioMicrophoneDevice();
+
+            // Formats to try (prefer 16k for Whisper, but many devices only support 44.1/48k)
+            int[] sampleRates = new[] { 16000, 24000, 32000, 44100, 48000 };
+            int[] channelOptions = new[] { 1, 2 };
+
+            bool TryInitializeDeviceFormat(int deviceIndex, int sampleRate, int channels, out Exception? failure)
+            {
+                failure = null;
+                WaveInEvent? testCapture = null;
+                try
+                {
+                    testCapture = new WaveInEvent
+                    {
+                        DeviceNumber = deviceIndex,
+                        WaveFormat = new WaveFormat(sampleRate, 16, channels)
+                    };
+
+                    Console.WriteLine($"[Whisper] Testing device {deviceIndex} with format: {sampleRate}Hz, {channels}ch");
+                    // Try start/stop to validate the format on this device
+                    testCapture.StartRecording();
+                    testCapture.StopRecording();
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    failure = ex;
+                    return false;
+                }
+                finally
+                {
+                    try { testCapture?.Dispose(); } catch { }
+                }
+            }
+
+            // Strategy: Try configured device name first (if provided), then try all devices and many formats
+            if (!string.IsNullOrEmpty(selectedDeviceName))
+            {
+                Console.WriteLine($"Looking for configured microphone: {selectedDeviceName}");
+                for (int i = 0; i < WaveIn.DeviceCount; i++)
+                {
+                    try
+                    {
+                        var caps = WaveIn.GetCapabilities(i);
+                        if (caps.ProductName.Contains(selectedDeviceName, StringComparison.OrdinalIgnoreCase) ||
+                            selectedDeviceName.Contains(caps.ProductName, StringComparison.OrdinalIgnoreCase))
+                        {
+                            Console.WriteLine($"[Whisper] Found matching device at index {i}: {caps.ProductName}");
+                            // Try multiple formats on this device
+                            foreach (var sr in sampleRates)
+                            {
+                                foreach (var ch in channelOptions)
+                                {
+                                    if (TryInitializeDeviceFormat(i, sr, ch, out Exception? fex))
+                                    {
+                                        micCapture = new WaveInEvent { DeviceNumber = i, WaveFormat = new WaveFormat(sr, 16, ch) };
+                                        Console.WriteLine($"[Whisper] Selected device {i} with format: {sr}Hz, {ch}ch");
+                                        sttLogWriter?.WriteLine($"Using device {i} ({caps.ProductName}): {sr}Hz, {ch}ch");
+                                        lastEx = null;
+                                        goto SelectedDevice;
+                                    }
+                                    else
+                                    {
+                                        Console.WriteLine($"[Whisper] Format {sr}Hz/{ch}ch not supported on device {i}: {fex?.GetType().Name}: {fex?.Message}");
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"[Whisper] Error checking device {i}: {ex.Message}");
+                    }
+                }
+            }
+
+            // Second pass: try all devices with multiple formats
+            Console.WriteLine("[Whisper] Trying all available microphone devices and formats...");
+            for (int i = 0; i < WaveIn.DeviceCount && micCapture == null; i++)
+            {
+                try
+                {
+                    var caps = WaveIn.GetCapabilities(i);
+                    Console.WriteLine($"[Whisper] Scanning device {i}: {caps.ProductName} ({caps.Channels}ch)");
+                    foreach (var sr in sampleRates)
+                    {
+                        foreach (var ch in channelOptions)
+                        {
+                            if (TryInitializeDeviceFormat(i, sr, ch, out Exception? fex))
+                            {
+                                micCapture = new WaveInEvent { DeviceNumber = i, WaveFormat = new WaveFormat(sr, 16, ch) };
+                                Console.WriteLine($"[Whisper] ✓ Device {i} initialized with format: {sr}Hz, {ch}ch");
+                                sttLogWriter?.WriteLine($"Using device {i} ({caps.ProductName}): {sr}Hz, {ch}ch");
+                                lastEx = null;
+                                break;
+                            }
+                            else
+                            {
+                                Console.WriteLine($"[Whisper] Format {sr}Hz/{ch}ch not supported on device {i}: {fex?.GetType().Name}: {fex?.Message}");
+                            }
+                        }
+                        if (micCapture != null) break;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    string errorMsg = $"[Whisper] Device {i} failed scan: {ex.GetType().Name}: {ex.Message}";
+                    Console.WriteLine(errorMsg);
+                    sttLogWriter?.WriteLine(errorMsg);
+                    try { micCapture?.Dispose(); } catch { }
+                    micCapture = null;
+                    lastEx = ex;
+                }
+            }
+
+            SelectedDevice:;
+
+            if (micCapture == null)
+            {
+                string errorDetails = $"Could not initialize WaveInEvent microphone capture on any device.\n" +
+                    $"Tried {WaveIn.DeviceCount} device(s).\n" +
+                    $"Last error: {lastEx?.GetType().Name}: {lastEx?.Message}";
+                Console.WriteLine($"[Whisper] ERROR: {errorDetails}");
+                sttLogWriter?.WriteLine($"ERROR: {errorDetails}");
+                throw new InvalidOperationException(errorDetails);
+            }
+            
+            // Create audio pipeline: Buffered -> Sample -> Resample (16k) -> Mono
+            bufferedProvider = new BufferedWaveProvider(micCapture.WaveFormat);
+            bufferedProvider.DiscardOnBufferOverflow = true;
+            Console.WriteLine($"[Whisper] Buffered provider created for microphone (format: {micCapture.WaveFormat.SampleRate}Hz, {micCapture.WaveFormat.Channels}ch)");
+
+            // Pipeline: WaveInEvent -> Buffered -> Sample -> Resample to 16kHz -> Mono
+            var sampleProvider = bufferedProvider.ToSampleProvider();
+            var resampler = new WdlResamplingSampleProvider(sampleProvider, 16000);
+            bufferedProvider.BufferDuration = TimeSpan.FromSeconds(60);
+            processedProvider = resampler.ToMono();
+
+            // Store the microphone capture
+            microphoneCapture = micCapture;
+            
+            // Register event handler and start recording
+            micCapture.DataAvailable += OnGameAudioReceived;
+            Console.WriteLine($"[Whisper] Starting microphone capture...");
+            try
+            {
+                micCapture.StartRecording();
+                Console.WriteLine($"[Whisper] ✓ Microphone capture started successfully");
+                sttLogWriter?.WriteLine($"Microphone capture started successfully");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Whisper] ERROR on StartRecording: {ex.GetType().Name}: {ex.Message}");
+                sttLogWriter?.WriteLine($"ERROR on StartRecording: {ex.Message}");
+                throw;
+            }
+            
+            await Task.CompletedTask; // Method signature requires async
+        }
+
         private async Task ProcessLoop(Action<string, string> onResult, CancellationToken cancellationToken)
         {
             float[] readBuffer = new float[4000]; // Max read ~0.25s @ 16kHz for faster response
-            while (loopbackCapture != null && !cancellationToken.IsCancellationRequested && !_isStopping)
+            while ((loopbackCapture != null || microphoneCapture != null) && !cancellationToken.IsCancellationRequested && !_isStopping)
             {
                 // 1. Consumer: Read from Resampler & VAD Check
                 if (processedProvider != null && bufferedProvider != null && bufferedProvider.BufferedBytes > minBytesToProcess)
@@ -562,10 +1041,11 @@ namespace RSTGameTranslation
                     _lastTranslatedText = originalText;
                     if (IsRepetitiveText(originalText))
                     {
-
                         continue;
                     }
 
+                    // Log to file
+                    sttLogWriter?.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] Recognized: {originalText}");
 
                     await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
                     {

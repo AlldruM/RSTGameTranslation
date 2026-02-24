@@ -19,6 +19,25 @@
     </WindowChrome.WindowChrome>
       
     <Window.Resources>
+        <!-- Color Palette (light high-contrast) -->
+        <Color x:Key="BgColor">#F7FAFC</Color>
+        <Color x:Key="SurfaceColor">#FFFFFF</Color>
+        <Color x:Key="Surface2Color">#F3F8FD</Color>
+        <Color x:Key="Surface3Color">#EBF4FB</Color>
+        <Color x:Key="AccentColor">#0066CC</Color>
+        <Color x:Key="BorderColor">#E0ECF8</Color>
+        <Color x:Key="NeutralBgColor">#E6EEF3</Color>
+        
+        <SolidColorBrush x:Key="BgBrush" Color="{StaticResource BgColor}"/>
+        <SolidColorBrush x:Key="SurfaceBrush" Color="{StaticResource SurfaceColor}"/>
+        <SolidColorBrush x:Key="Surface2Brush" Color="{StaticResource Surface2Color}"/>
+        <SolidColorBrush x:Key="Surface3Brush" Color="{StaticResource Surface3Color}"/>
+        <SolidColorBrush x:Key="NeutralBgBrush" Color="{StaticResource NeutralBgColor}"/>
+        <SolidColorBrush x:Key="AccentBrush" Color="{StaticResource AccentColor}"/>
+        <SolidColorBrush x:Key="BorderBrush" Color="{StaticResource BorderColor}"/>
+        <SolidColorBrush x:Key="TextBrush" Color="#0B2545"/>
+        <SolidColorBrush x:Key="MutedBrush" Color="#5B6B7A"/>
+
         <!-- Modern Button Style with Smooth Animations -->
         <Style x:Key="ModernButton" TargetType="Button">
             <Setter Property="Foreground" Value="White"/>
@@ -101,8 +120,8 @@
 
         <!-- Tool Group Style with Hover Animation -->
         <Style x:Key="ToolGroupStyle" TargetType="Border">
-            <Setter Property="Background" Value="{DynamicResource Surface2Brush}"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+            <Setter Property="Background" Value="{StaticResource Surface2Brush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="CornerRadius" Value="8"/>
             <Setter Property="Padding" Value="10,8"/>
@@ -145,9 +164,9 @@
 
         <!-- Neutral button used for subtle actions (Clear / Show) with Animation -->
         <Style x:Key="NeutralButton" TargetType="Button" BasedOn="{StaticResource ModernButton}">
-            <Setter Property="Background" Value="{DynamicResource NeutralBgBrush}"/>
-            <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+            <Setter Property="Background" Value="{StaticResource NeutralBgBrush}"/>
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Padding" Value="10,6"/>
             <Setter Property="MinWidth" Value="70"/>
@@ -163,8 +182,8 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="{DynamicResource Surface2Brush}"/>
-                                <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                                <Setter TargetName="border" Property="Background" Value="{StaticResource Surface2Brush}"/>
+                                <Setter TargetName="border" Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
                                 <Setter TargetName="border" Property="Effect">
                                     <Setter.Value>
                                         <DropShadowEffect Color="#22000000" BlurRadius="8" ShadowDepth="1" Opacity="0.15"/>
@@ -218,9 +237,9 @@
 
         <!-- Accent (solid) button style with Animation -->
         <Style x:Key="AccentButton" TargetType="Button" BasedOn="{StaticResource ToolbarPrimaryButton}">
-            <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
+            <Setter Property="Background" Value="{StaticResource AccentBrush}"/>
             <Setter Property="Foreground" Value="White"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Effect">
                 <Setter.Value>
@@ -352,7 +371,7 @@
 
         <!-- Tool Group Label Style -->
         <Style x:Key="ToolGroupLabel" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="{DynamicResource MutedBrush}"/>
+            <Setter Property="Foreground" Value="{StaticResource MutedBrush}"/>
             <Setter Property="FontSize" Value="10"/>
             <Setter Property="HorizontalAlignment" Value="Center"/>
             <Setter Property="Margin" Value="0,6,0,0"/>
@@ -361,18 +380,18 @@
 
         <!-- Card Style -->
         <Style x:Key="CardStyle" TargetType="Border">
-            <Setter Property="Background" Value="{DynamicResource Surface2Brush}"/>
+            <Setter Property="Background" Value="{StaticResource Surface2Brush}"/>
             <Setter Property="CornerRadius" Value="10"/>
             <Setter Property="Padding" Value="16"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
             <Setter Property="Margin" Value="0,0,0,12"/>
         </Style>
 
         <!-- Status Badge Style -->
         <Style x:Key="StatusBadge" TargetType="Border">
-            <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+            <Setter Property="Background" Value="{StaticResource SurfaceBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="CornerRadius" Value="12"/>
             <Setter Property="Padding" Value="10,5"/>
@@ -381,8 +400,8 @@
 
         <!-- Hotkey Item Style -->
         <Style x:Key="HotkeyItem" TargetType="Border">
-            <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+            <Setter Property="Background" Value="{StaticResource SurfaceBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="CornerRadius" Value="6"/>
             <Setter Property="Padding" Value="10,8"/>
@@ -391,8 +410,8 @@
 
         <!-- Hotkey Key Style -->
         <Style x:Key="HotkeyKey" TargetType="Border">
-            <Setter Property="Background" Value="{DynamicResource Surface3Brush}"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+            <Setter Property="Background" Value="{StaticResource Surface3Brush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="CornerRadius" Value="4"/>
             <Setter Property="Padding" Value="8,3"/>
@@ -439,8 +458,8 @@
         </tb:TaskbarIcon>
 
         <!-- Main Window Frame -->
-        <Border Name="MainBorder" Background="{DynamicResource SurfaceBrush}" CornerRadius="12" 
-                BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+        <Border Name="MainBorder" Background="{StaticResource SurfaceBrush}" CornerRadius="12" 
+                BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
             <Border.Effect>
                 <DropShadowEffect BlurRadius="25" ShadowDepth="0" Opacity="0.6" Color="Black"/>
             </Border.Effect>
@@ -454,8 +473,8 @@
                 </Grid.RowDefinitions>
 
                 <!-- ========== TITLE BAR ========== -->
-                <Border Name="HeaderBorder" Grid.Row="0" Background="{DynamicResource Surface2Brush}" 
-                        CornerRadius="12,12,0,0" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1"
+                <Border Name="HeaderBorder" Grid.Row="0" Background="{StaticResource Surface2Brush}" 
+                        CornerRadius="12,12,0,0" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1"
                         MouseLeftButtonDown="Header_MouseLeftButtonDown"
                         WindowChrome.IsHitTestVisibleInChrome="True">
                     <Grid Height="40" Margin="12,0">
@@ -472,7 +491,7 @@
                                        HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </Border>
                             <TextBlock Text="RSTGameTranslation" FontSize="13" FontWeight="SemiBold" 
-                                       Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center"/>
+                                       Foreground="{StaticResource TextBrush}" VerticalAlignment="Center"/>
                         </StackPanel>
                         
                         <!-- Right: Window Controls (with QuickStart & Discord moved here) -->
@@ -499,10 +518,6 @@
                                         </StackPanel>
                             </Button>
 
-                            <Button x:Name="themeToggleButton" Style="{StaticResource NeutralButton}" Width="34" Height="30" Margin="0,0,8,0" Click="ThemeToggleButton_Click" ToolTip="Toggle Dark/Light" WindowChrome.IsHitTestVisibleInChrome="True">
-                                <TextBlock x:Name="themeToggleIcon" Text="🌙" FontSize="13" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                            </Button>
-
                             <Button x:Name="minimizeButton" Style="{StaticResource WindowControlButton}"
                                     Background="#ffbd2e" Click="MinimizeButton_Click" 
                                     WindowChrome.IsHitTestVisibleInChrome="True" ToolTip="Minimize"/>
@@ -513,8 +528,8 @@
                     </Grid>
                 </Border>
                 <!-- ========== TOOLBAR ========== -->
-                <Border Grid.Row="1" Background="{DynamicResource SurfaceBrush}" 
-                        BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
+                <Border Grid.Row="1" Background="{StaticResource SurfaceBrush}" 
+                        BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1">
                     <WrapPanel Margin="12,10" Orientation="Horizontal">
                         
                         <!-- GROUP: Control -->
@@ -621,24 +636,6 @@
                             </StackPanel>
                         </Border>
 
-                        <!-- GROUP: Screen Selection -->
-                        <Border Style="{StaticResource ToolGroupStyle}">
-                            <StackPanel>
-                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                                    <ComboBox x:Name="screenSelectionComboBox" 
-                                              Width="160" Height="32"
-                                              VerticalContentAlignment="Center"
-                                              Padding="8,0"
-                                              FontSize="12"
-                                              SelectionChanged="ScreenSelectionComboBox_SelectionChanged"
-                                              WindowChrome.IsHitTestVisibleInChrome="True"
-                                              Style="{StaticResource ThemedComboBox}"/>
-                                </StackPanel>
-                                <TextBlock Text="{Binding Source={x:Static local:LocalizationManager.Instance}, Path=Strings[Grp_Screen]}" 
-                                           Style="{StaticResource ToolGroupLabel}"/>
-                            </StackPanel>
-                        </Border>
-
                         <!-- GROUP: Display -->
                         <Border Style="{StaticResource ToolGroupStyle}">
                             <StackPanel>
@@ -705,6 +702,7 @@
                                             </DataTemplate>
                                         </Button.ContentTemplate>
                                     </Button>
+
                                 </StackPanel>
                                 <TextBlock Text="{Binding Source={x:Static local:LocalizationManager.Instance}, Path=Strings[Grp_System]}" 
                                            Style="{StaticResource ToolGroupLabel}"/>
@@ -764,36 +762,36 @@
                                     <StackPanel Orientation="Horizontal">
                                         <Ellipse x:Name="StartStatusEllipse" Width="8" Height="8" Fill="#ef4444" Margin="0,0,8,0"/>
                                         <TextBlock Text="{Binding Source={x:Static local:LocalizationManager.Instance}, Path=Strings[Btn_Start]}" 
-                                                   Foreground="{DynamicResource MutedBrush}" FontSize="12"/>
-                                        <TextBlock Text=": " Foreground="{DynamicResource TextBrush}" FontSize="12"/>
-                                        <TextBlock x:Name="StartStatusText" Text="{Binding Source={x:Static local:LocalizationManager.Instance}, Path=Strings[Btn_Off]}" Foreground="{DynamicResource TextBrush}" FontSize="12"/>
+                                                   Foreground="{StaticResource MutedBrush}" FontSize="12"/>
+                                        <TextBlock Text=": " Foreground="{StaticResource TextBrush}" FontSize="12"/>
+                                        <TextBlock x:Name="StartStatusText" Text="{Binding Source={x:Static local:LocalizationManager.Instance}, Path=Strings[Btn_Off]}" Foreground="{StaticResource TextBrush}" FontSize="12"/>
                                     </StackPanel>
                                 </Border>
                                 <Border Style="{StaticResource StatusBadge}">
                                     <StackPanel Orientation="Horizontal">
                                         <Ellipse x:Name="AudioStatusEllipse" Width="8" Height="8" Fill="#ef4444" Margin="0,0,8,0"/>
                                         <TextBlock Text="{Binding Source={x:Static local:LocalizationManager.Instance}, Path=Strings[Btn_AudioService]}" 
-                                                   Foreground="{DynamicResource MutedBrush}" FontSize="12"/>
-                                        <TextBlock Text=": " Foreground="{DynamicResource TextBrush}" FontSize="12"/>
-                                        <TextBlock x:Name="AudioStatusText" Text="{Binding Source={x:Static local:LocalizationManager.Instance}, Path=Strings[Btn_Off]}" Foreground="{DynamicResource TextBrush}" FontSize="12"/>
+                                                   Foreground="{StaticResource MutedBrush}" FontSize="12"/>
+                                        <TextBlock Text=": " Foreground="{StaticResource TextBrush}" FontSize="12"/>
+                                        <TextBlock x:Name="AudioStatusText" Text="{Binding Source={x:Static local:LocalizationManager.Instance}, Path=Strings[Btn_Off]}" Foreground="{StaticResource TextBrush}" FontSize="12"/>
                                     </StackPanel>
                                 </Border>
                                 <Border Style="{StaticResource StatusBadge}">
                                     <StackPanel Orientation="Horizontal">
                                         <Ellipse x:Name="OCRStatusEllipse" Width="8" Height="8" Fill="#ef4444" Margin="0,0,8,0"/>
                                         <TextBlock Text="{Binding Source={x:Static local:LocalizationManager.Instance}, Path=Strings[Btn_StartOCR]}" 
-                                                   Foreground="{DynamicResource MutedBrush}" FontSize="12"/>
-                                        <TextBlock Text=": " Foreground="{DynamicResource TextBrush}" FontSize="12"/>
-                                        <TextBlock x:Name="OCRStatusText" Text="{Binding Source={x:Static local:LocalizationManager.Instance}, Path=Strings[Btn_Off]}" Foreground="{DynamicResource TextBrush}" FontSize="12"/>
+                                                   Foreground="{StaticResource MutedBrush}" FontSize="12"/>
+                                        <TextBlock Text=": " Foreground="{StaticResource TextBrush}" FontSize="12"/>
+                                        <TextBlock x:Name="OCRStatusText" Text="{Binding Source={x:Static local:LocalizationManager.Instance}, Path=Strings[Btn_Off]}" Foreground="{StaticResource TextBrush}" FontSize="12"/>
                                     </StackPanel>
                                 </Border>
                                 <Border Style="{StaticResource StatusBadge}">
                                     <StackPanel Orientation="Horizontal">
                                         <Ellipse x:Name="OverlayStatusEllipse" Width="8" Height="8" Fill="#ef4444" Margin="0,0,8,0"/>
                                         <TextBlock Text="{Binding Source={x:Static local:LocalizationManager.Instance}, Path=Strings[Btn_Overlay]}" 
-                                                   Foreground="{DynamicResource MutedBrush}" FontSize="12"/>
-                                        <TextBlock Text=": " Foreground="{DynamicResource TextBrush}" FontSize="12"/>
-                                        <TextBlock x:Name="OverlayStatusText" Text="{Binding Source={x:Static local:LocalizationManager.Instance}, Path=Strings[Btn_Off]}" Foreground="{DynamicResource TextBrush}" FontSize="12"/>
+                                                   Foreground="{StaticResource MutedBrush}" FontSize="12"/>
+                                        <TextBlock Text=": " Foreground="{StaticResource TextBrush}" FontSize="12"/>
+                                        <TextBlock x:Name="OverlayStatusText" Text="{Binding Source={x:Static local:LocalizationManager.Instance}, Path=Strings[Btn_Off]}" Foreground="{StaticResource TextBrush}" FontSize="12"/>
                                     </StackPanel>
                                 </Border>
                             </WrapPanel>
@@ -817,9 +815,9 @@
                                         </Grid.ColumnDefinitions>
 
                                         <StackPanel Grid.Column="0" Orientation="Horizontal">
-                                            <Border Width="4" Height="16" Background="{DynamicResource AccentBrush}" CornerRadius="2" Margin="0,0,10,0"/>
+                                            <Border Width="4" Height="16" Background="{StaticResource AccentBrush}" CornerRadius="2" Margin="0,0,10,0"/>
                                             <TextBlock Text="{Binding Source={x:Static local:LocalizationManager.Instance}, Path=Strings[Lbl_GlobalHotKeys]}" 
-                                                       Foreground="{DynamicResource AccentBrush}" FontSize="14" FontWeight="Bold"  TextWrapping="Wrap" MaxWidth="420" VerticalAlignment="Center" TextAlignment="Right" HorizontalAlignment="Right"/>
+                                                       Foreground="{StaticResource AccentBrush}" FontSize="14" FontWeight="Bold"  TextWrapping="Wrap" MaxWidth="420" VerticalAlignment="Center" TextAlignment="Right" HorizontalAlignment="Right"/>
                                         </StackPanel>
 
                                         <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="8,0,0,0">
@@ -832,117 +830,108 @@
                                         <Border Style="{StaticResource HotkeyItem}" MinWidth="220">
                                             <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                                                 <TextBlock Text="{Binding Source={x:Static local:LocalizationManager.Instance}, Path=Strings[Lbl_StartStopTranslation]}" 
-                                                           Foreground="{DynamicResource MutedBrush}" FontSize="12" VerticalAlignment="Center"/>
+                                                           Foreground="{StaticResource MutedBrush}" FontSize="12" VerticalAlignment="Center"/>
                                                 <Border Grid.Column="1" Style="{StaticResource HotkeyKey}">
-                                                    <TextBlock x:Name="hotKeyStartStop" Text="ALT + G" FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource TextBrush}"/>
+                                                    <TextBlock x:Name="hotKeyStartStop" Text="ALT + G" FontFamily="Consolas" FontSize="11" Foreground="{StaticResource TextBrush}"/>
                                                 </Border>
                                             </Grid>
                                         </Border>
                                         <Border Style="{StaticResource HotkeyItem}" MinWidth="220">
                                             <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                                                 <TextBlock Text="{Binding Source={x:Static local:LocalizationManager.Instance}, Path=Strings[Lbl_SelectArea]}" 
-                                                           Foreground="{DynamicResource MutedBrush}" FontSize="12" VerticalAlignment="Center"/>
+                                                           Foreground="{StaticResource MutedBrush}" FontSize="12" VerticalAlignment="Center"/>
                                                 <Border Grid.Column="1" Style="{StaticResource HotkeyKey}">
-                                                    <TextBlock x:Name="hotKeySelectArea" Text="ALT + Q" FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource TextBrush}"/>
+                                                    <TextBlock x:Name="hotKeySelectArea" Text="ALT + Q" FontFamily="Consolas" FontSize="11" Foreground="{StaticResource TextBrush}"/>
                                                 </Border>
                                             </Grid>
                                         </Border>
                                         <Border Style="{StaticResource HotkeyItem}" MinWidth="220">
                                             <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                                                 <TextBlock Text="{Binding Source={x:Static local:LocalizationManager.Instance}, Path=Strings[Lbl_ToggleOverlay]}" 
-                                                           Foreground="{DynamicResource MutedBrush}" FontSize="12" VerticalAlignment="Center"/>
+                                                           Foreground="{StaticResource MutedBrush}" FontSize="12" VerticalAlignment="Center"/>
                                                 <Border Grid.Column="1" Style="{StaticResource HotkeyKey}">
-                                                    <TextBlock x:Name="hotKeyOverlay" Text="ALT + F" FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource TextBrush}"/>
+                                                    <TextBlock x:Name="hotKeyOverlay" Text="ALT + F" FontFamily="Consolas" FontSize="11" Foreground="{StaticResource TextBrush}"/>
                                                 </Border>
                                             </Grid>
                                         </Border>
                                         <Border Style="{StaticResource HotkeyItem}" MinWidth="220">
                                             <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                                                 <TextBlock Text="{Binding Source={x:Static local:LocalizationManager.Instance}, Path=Strings[Lbl_ToggleChatBox]}" 
-                                                           Foreground="{DynamicResource MutedBrush}" FontSize="12" VerticalAlignment="Center"/>
+                                                           Foreground="{StaticResource MutedBrush}" FontSize="12" VerticalAlignment="Center"/>
                                                 <Border Grid.Column="1" Style="{StaticResource HotkeyKey}">
-                                                    <TextBlock x:Name="hotKeyChatBox" Text="ALT + C" FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource TextBrush}"/>
+                                                    <TextBlock x:Name="hotKeyChatBox" Text="ALT + C" FontFamily="Consolas" FontSize="11" Foreground="{StaticResource TextBrush}"/>
                                                 </Border>
                                             </Grid>
                                         </Border>
                                         <Border Style="{StaticResource HotkeyItem}" MinWidth="220">
                                             <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                                                 <TextBlock Text="{Binding Source={x:Static local:LocalizationManager.Instance}, Path=Strings[Lbl_ShowAreaBorder]}" 
-                                                           Foreground="{DynamicResource MutedBrush}" FontSize="12" VerticalAlignment="Center"/>
+                                                           Foreground="{StaticResource MutedBrush}" FontSize="12" VerticalAlignment="Center"/>
                                                 <Border Grid.Column="1" Style="{StaticResource HotkeyKey}">
-                                                    <TextBlock x:Name="hotKeyShowArea" Text="ALT + B" FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource TextBrush}"/>
+                                                    <TextBlock x:Name="hotKeyShowArea" Text="ALT + B" FontFamily="Consolas" FontSize="11" Foreground="{StaticResource TextBrush}"/>
                                                 </Border>
                                             </Grid>
                                         </Border>
                                         <Border Style="{StaticResource HotkeyItem}" MinWidth="220">
                                             <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                                                 <TextBlock Text="{Binding Source={x:Static local:LocalizationManager.Instance}, Path=Strings[Btn_AudioService]}" 
-                                                           Foreground="{DynamicResource MutedBrush}" FontSize="12" VerticalAlignment="Center"/>
+                                                           Foreground="{StaticResource MutedBrush}" FontSize="12" VerticalAlignment="Center"/>
                                                 <Border Grid.Column="1" Style="{StaticResource HotkeyKey}">
-                                                    <TextBlock x:Name="hotKeyAudio" Text="ALT + K" FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource TextBrush}"/>
+                                                    <TextBlock x:Name="hotKeyAudio" Text="ALT + K" FontFamily="Consolas" FontSize="11" Foreground="{StaticResource TextBrush}"/>
                                                 </Border>
                                             </Grid>
                                         </Border>
                                         <Border Style="{StaticResource HotkeyItem}" MinWidth="220">
                                             <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                                                 <TextBlock Text="{Binding Source={x:Static local:LocalizationManager.Instance}, Path=Strings[Lbl_OpenSettings]}" 
-                                                           Foreground="{DynamicResource MutedBrush}" FontSize="12" VerticalAlignment="Center"/>
+                                                           Foreground="{StaticResource MutedBrush}" FontSize="12" VerticalAlignment="Center"/>
                                                 <Border Grid.Column="1" Style="{StaticResource HotkeyKey}">
-                                                    <TextBlock x:Name="hotKeySetting" Text="ALT + P" FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource TextBrush}"/>
+                                                    <TextBlock x:Name="hotKeySetting" Text="ALT + P" FontFamily="Consolas" FontSize="11" Foreground="{StaticResource TextBrush}"/>
                                                 </Border>
                                             </Grid>
                                         </Border>
                                         <Border Style="{StaticResource HotkeyItem}" MinWidth="220">
                                             <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                                                 <TextBlock Text="{Binding Source={x:Static local:LocalizationManager.Instance}, Path=Strings[Lbl_ToggleLog]}" 
-                                                           Foreground="{DynamicResource MutedBrush}" FontSize="12" VerticalAlignment="Center"/>
+                                                           Foreground="{StaticResource MutedBrush}" FontSize="12" VerticalAlignment="Center"/>
                                                 <Border Grid.Column="1" Style="{StaticResource HotkeyKey}">
-                                                    <TextBlock x:Name="hotKeyLog" Text="ALT + L" FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource TextBrush}"/>
+                                                    <TextBlock x:Name="hotKeyLog" Text="ALT + L" FontFamily="Consolas" FontSize="11" Foreground="{StaticResource TextBrush}"/>
                                                 </Border>
                                             </Grid>
                                         </Border>
                                         <Border Style="{StaticResource HotkeyItem}" MinWidth="220">
                                             <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                                                 <TextBlock Text="{Binding Source={x:Static local:LocalizationManager.Instance}, Path=Strings[Lbl_SwapLanguages]}" 
-                                                           Foreground="{DynamicResource MutedBrush}" FontSize="12" VerticalAlignment="Center"/>
+                                                           Foreground="{StaticResource MutedBrush}" FontSize="12" VerticalAlignment="Center"/>
                                                 <Border Grid.Column="1" Style="{StaticResource HotkeyKey}">
-                                                    <TextBlock x:Name="hotKeySwapLanguages" Text="ALT + V" FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource TextBrush}"/>
+                                                    <TextBlock x:Name="hotKeySwapLanguages" Text="ALT + V" FontFamily="Consolas" FontSize="11" Foreground="{StaticResource TextBrush}"/>
                                                 </Border>
                                             </Grid>
                                         </Border>
                                         <Border Style="{StaticResource HotkeyItem}" MinWidth="220">
                                             <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                                                 <TextBlock Text="{Binding Source={x:Static local:LocalizationManager.Instance}, Path=Strings[Lbl_ClearAllAreas]}" 
-                                                           Foreground="{DynamicResource MutedBrush}" FontSize="12" VerticalAlignment="Center"/>
+                                                           Foreground="{StaticResource MutedBrush}" FontSize="12" VerticalAlignment="Center"/>
                                                 <Border Grid.Column="1" Style="{StaticResource HotkeyKey}">
-                                                    <TextBlock x:Name="hotKeyClearAreas" Text="ALT + R" FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource TextBrush}"/>
+                                                    <TextBlock x:Name="hotKeyClearAreas" Text="ALT + R" FontFamily="Consolas" FontSize="11" Foreground="{StaticResource TextBrush}"/>
                                                 </Border>
                                             </Grid>
                                         </Border>
                                         <Border Style="{StaticResource HotkeyItem}" MinWidth="220">
                                             <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                                                 <TextBlock Text="{Binding Source={x:Static local:LocalizationManager.Instance}, Path=Strings[Lbl_ClearSelectedArea]}" 
-                                                           Foreground="{DynamicResource MutedBrush}" FontSize="12" VerticalAlignment="Center"/>
+                                                           Foreground="{StaticResource MutedBrush}" FontSize="12" VerticalAlignment="Center"/>
                                                 <Border Grid.Column="1" Style="{StaticResource HotkeyKey}">
-                                                    <TextBlock x:Name="hotKeyClearPreviousArea" Text="ALT + H" FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource TextBrush}"/>
+                                                    <TextBlock x:Name="hotKeyClearPreviousArea" Text="ALT + H" FontFamily="Consolas" FontSize="11" Foreground="{StaticResource TextBrush}"/>
                                                 </Border>
                                             </Grid>
                                         </Border>
                                         <Border Style="{StaticResource HotkeyItem}" MinWidth="220">
                                             <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                                                 <TextBlock Text="{Binding Source={x:Static local:LocalizationManager.Instance}, Path=Strings[Lbl_TranslationRetry]}" 
-                                                           Foreground="{DynamicResource MutedBrush}" FontSize="12" VerticalAlignment="Center"/>
+                                                           Foreground="{StaticResource MutedBrush}" FontSize="12" VerticalAlignment="Center"/>
                                                 <Border Grid.Column="1" Style="{StaticResource HotkeyKey}">
-                                                    <TextBlock x:Name="hotKeyRetryTranslate" Text="ALT + T" FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource TextBrush}"/>
-                                                </Border>
-                                            </Grid>
-                                        </Border>
-                                        <Border Style="{StaticResource HotkeyItem}" MinWidth="220">
-                                            <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                                                <TextBlock Text="{Binding Source={x:Static local:LocalizationManager.Instance}, Path=Strings[Lbl_SelectExcludeRegion]}" 
-                                                           Foreground="{DynamicResource MutedBrush}" FontSize="12" VerticalAlignment="Center"/>
-                                                <Border Grid.Column="1" Style="{StaticResource HotkeyKey}">
-                                                    <TextBlock x:Name="hotKeyToggleExcludeRegions" Text="ALT + X" FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource TextBrush}"/>
+                                                    <TextBlock x:Name="hotKeyRetryTranslate" Text="ALT + T" FontFamily="Consolas" FontSize="11" Foreground="{StaticResource TextBrush}"/>
                                                 </Border>
                                             </Grid>
                                         </Border>
@@ -950,45 +939,45 @@
                                         <Border Style="{StaticResource HotkeyItem}" MinWidth="180">
                                             <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                                                 <TextBlock Text="{Binding Source={x:Static local:LocalizationManager.Instance}, Path=Strings[Lbl_SelectArea1]}" 
-                                                           Foreground="{DynamicResource MutedBrush}" FontSize="12" VerticalAlignment="Center"/>
+                                                           Foreground="{StaticResource MutedBrush}" FontSize="12" VerticalAlignment="Center"/>
                                                 <Border Grid.Column="1" Style="{StaticResource HotkeyKey}">
-                                                    <TextBlock x:Name="hotKeyArea1" Text="ALT + 1" FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource TextBrush}"/>
+                                                    <TextBlock x:Name="hotKeyArea1" Text="ALT + 1" FontFamily="Consolas" FontSize="11" Foreground="{StaticResource TextBrush}"/>
                                                 </Border>
                                             </Grid>
                                         </Border>
                                         <Border Style="{StaticResource HotkeyItem}" MinWidth="180">
                                             <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                                                 <TextBlock Text="{Binding Source={x:Static local:LocalizationManager.Instance}, Path=Strings[Lbl_SelectArea2]}" 
-                                                           Foreground="{DynamicResource MutedBrush}" FontSize="12" VerticalAlignment="Center"/>
+                                                           Foreground="{StaticResource MutedBrush}" FontSize="12" VerticalAlignment="Center"/>
                                                 <Border Grid.Column="1" Style="{StaticResource HotkeyKey}">
-                                                    <TextBlock x:Name="hotKeyArea2" Text="ALT + 2" FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource TextBrush}"/>
+                                                    <TextBlock x:Name="hotKeyArea2" Text="ALT + 2" FontFamily="Consolas" FontSize="11" Foreground="{StaticResource TextBrush}"/>
                                                 </Border>
                                             </Grid>
                                         </Border>
                                         <Border Style="{StaticResource HotkeyItem}" MinWidth="180">
                                             <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                                                 <TextBlock Text="{Binding Source={x:Static local:LocalizationManager.Instance}, Path=Strings[Lbl_SelectArea3]}" 
-                                                           Foreground="{DynamicResource MutedBrush}" FontSize="12" VerticalAlignment="Center"/>
+                                                           Foreground="{StaticResource MutedBrush}" FontSize="12" VerticalAlignment="Center"/>
                                                 <Border Grid.Column="1" Style="{StaticResource HotkeyKey}">
-                                                    <TextBlock x:Name="hotKeyArea3" Text="ALT + 3" FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource TextBrush}"/>
+                                                    <TextBlock x:Name="hotKeyArea3" Text="ALT + 3" FontFamily="Consolas" FontSize="11" Foreground="{StaticResource TextBrush}"/>
                                                 </Border>
                                             </Grid>
                                         </Border>
                                         <Border Style="{StaticResource HotkeyItem}" MinWidth="180">
                                             <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                                                 <TextBlock Text="{Binding Source={x:Static local:LocalizationManager.Instance}, Path=Strings[Lbl_SelectArea4]}" 
-                                                           Foreground="{DynamicResource MutedBrush}" FontSize="12" VerticalAlignment="Center"/>
+                                                           Foreground="{StaticResource MutedBrush}" FontSize="12" VerticalAlignment="Center"/>
                                                 <Border Grid.Column="1" Style="{StaticResource HotkeyKey}">
-                                                    <TextBlock x:Name="hotKeyArea4" Text="ALT + 4" FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource TextBrush}"/>
+                                                    <TextBlock x:Name="hotKeyArea4" Text="ALT + 4" FontFamily="Consolas" FontSize="11" Foreground="{StaticResource TextBrush}"/>
                                                 </Border>
                                             </Grid>
                                         </Border>
                                         <Border Style="{StaticResource HotkeyItem}" MinWidth="180">
                                             <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                                                 <TextBlock Text="{Binding Source={x:Static local:LocalizationManager.Instance}, Path=Strings[Lbl_SelectArea5]}" 
-                                                           Foreground="{DynamicResource MutedBrush}" FontSize="12" VerticalAlignment="Center"/>
+                                                           Foreground="{StaticResource MutedBrush}" FontSize="12" VerticalAlignment="Center"/>
                                                 <Border Grid.Column="1" Style="{StaticResource HotkeyKey}">
-                                                    <TextBlock x:Name="hotKeyArea5" Text="ALT + 5" FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource TextBrush}"/>
+                                                    <TextBlock x:Name="hotKeyArea5" Text="ALT + 5" FontFamily="Consolas" FontSize="11" Foreground="{StaticResource TextBrush}"/>
                                                 </Border>
                                             </Grid>
                                         </Border>
@@ -1009,28 +998,28 @@
                                 <Border Grid.Column="0" Style="{StaticResource CardStyle}">
                                     <StackPanel>
                                         <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-                                            <Border Width="4" Height="16" Background="{DynamicResource AccentBrush}" CornerRadius="2" Margin="0,0,10,0"/>
+                                            <Border Width="4" Height="16" Background="{StaticResource AccentBrush}" CornerRadius="2" Margin="0,0,10,0"/>
                                             <TextBlock Text="{Binding Source={x:Static local:LocalizationManager.Instance}, Path=Strings[Lbl_DeveloperInfo]}" 
-                                                       Foreground="{DynamicResource AccentBrush}" FontSize="14" FontWeight="Bold"/>
+                                                       Foreground="{StaticResource AccentBrush}" FontSize="14" FontWeight="Bold"/>
                                         </StackPanel>
                                         <TextBlock Text="RSTGameTranslation" FontSize="16" FontWeight="Bold" 
-                                                   Foreground="{DynamicResource TextBrush}" Margin="0,0,0,4"/>
+                                                   Foreground="{StaticResource TextBrush}" Margin="0,0,0,4"/>
                                         <TextBlock x:Name="AppVersion" Text="{Binding Source={x:Static local:LocalizationManager.Instance}, Path=Strings[App_Version]}" 
-                                                   Foreground="{DynamicResource MutedBrush}" FontSize="12" Margin="0,0,0,8"/>
+                                                   Foreground="{StaticResource MutedBrush}" FontSize="12" Margin="0,0,0,8"/>
                                         <TextBlock Text="{Binding Source={x:Static local:LocalizationManager.Instance}, Path=Strings[App_Description]}" 
-                                                   Foreground="{DynamicResource TextBrush}" FontSize="13" TextWrapping="Wrap" Margin="0,0,0,10"/>
-                                        <TextBlock Foreground="{DynamicResource MutedBrush}" FontSize="12" Margin="0,0,0,4">
+                                                   Foreground="{StaticResource TextBrush}" FontSize="13" TextWrapping="Wrap" Margin="0,0,0,10"/>
+                                        <TextBlock Foreground="{StaticResource MutedBrush}" FontSize="12" Margin="0,0,0,4">
                                             <Run Text="{Binding Source={x:Static local:LocalizationManager.Instance}, Path=Strings[Lbl_DevelopedBy], Mode=OneWay}"/>
-                                            <Run Text=" thanhkeke97" Foreground="{DynamicResource TextBrush}" FontWeight="SemiBold"/>
+                                            <Run Text=" thanhkeke97" Foreground="{StaticResource TextBrush}" FontWeight="SemiBold"/>
                                         </TextBlock>
                                         <TextBlock FontSize="12" Margin="0,0,0,4">
-                                            <Run Text="GitHub: " Foreground="{DynamicResource MutedBrush}"/>
-                                            <Hyperlink NavigateUri="https://github.com/thanhkeke97" RequestNavigate="TutorialLink_RequestNavigate" Foreground="{DynamicResource AccentBrush}">
+                                            <Run Text="GitHub: " Foreground="{StaticResource MutedBrush}"/>
+                                            <Hyperlink NavigateUri="https://github.com/thanhkeke97" RequestNavigate="TutorialLink_RequestNavigate" Foreground="{StaticResource AccentBrush}">
                                                 github.com/thanhkeke97
                                             </Hyperlink>
                                         </TextBlock>
                                         <TextBlock Text="{Binding Source={x:Static local:LocalizationManager.Instance}, Path=Strings[Lbl_Copyright], Mode=OneWay}" 
-                                                   Foreground="{DynamicResource MutedBrush}" FontSize="11" Margin="0,8,0,0"/>
+                                                   Foreground="{StaticResource MutedBrush}" FontSize="11" Margin="0,8,0,0"/>
                                     </StackPanel>
                                 </Border>
                                 
@@ -1038,12 +1027,12 @@
                                 <Border Grid.Column="2" Style="{StaticResource CardStyle}">
                                     <StackPanel>
                                         <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-                                            <Border Width="4" Height="16" Background="{DynamicResource AccentBrush}" CornerRadius="2" Margin="0,0,10,0"/>
+                                            <Border Width="4" Height="16" Background="{StaticResource AccentBrush}" CornerRadius="2" Margin="0,0,10,0"/>
                                             <TextBlock Text="{Binding Source={x:Static local:LocalizationManager.Instance}, Path=Strings[Lbl_SupportAuthor]}" 
-                                                       Foreground="{DynamicResource AccentBrush}" FontSize="14" FontWeight="Bold"/>
+                                                       Foreground="{StaticResource AccentBrush}" FontSize="14" FontWeight="Bold"/>
                                         </StackPanel>
                                         <TextBlock Text="{Binding Source={x:Static local:LocalizationManager.Instance}, Path=Strings[Msg_SupportAuthor]}" 
-                                                   Foreground="{DynamicResource TextBrush}" FontSize="13" TextWrapping="Wrap" Margin="0,0,0,12"/>
+                                                   Foreground="{StaticResource TextBrush}" FontSize="13" TextWrapping="Wrap" Margin="0,0,0,12"/>
                                         <!-- Donate Button -->
                                         <Button x:Name="donateBtn" Style="{StaticResource ModernButton}"
                                                 Background="#fbbf24" Margin="0,0,0,8" HorizontalAlignment="Left"
@@ -1055,7 +1044,7 @@
                                         </Button>
                                         
                                         <TextBlock Text="{Binding Source={x:Static local:LocalizationManager.Instance}, Path=Strings[Msg_Disclaimer], Mode=OneWay}" 
-                                                   Foreground="{DynamicResource MutedBrush}" FontSize="11" FontStyle="Italic" TextWrapping="Wrap"/>
+                                                   Foreground="{StaticResource MutedBrush}" FontSize="11" FontStyle="Italic" TextWrapping="Wrap"/>
                                     </StackPanel>
                                 </Border>
                             </Grid>
@@ -1064,15 +1053,14 @@
                 </Grid>
                 
                 <!-- ========== FOOTER ========== -->
-                <Border Name="FooterBorder" Grid.Row="3" Background="{DynamicResource Surface2Brush}" 
-                        CornerRadius="0,0,12,12" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0">
+                <Border Name="FooterBorder" Grid.Row="3" Background="{StaticResource Surface2Brush}" 
+                        CornerRadius="0,0,12,12" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0">
                     <Grid Height="40" Margin="16,0">
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center">
                             <TextBlock Text="{Binding Source={x:Static local:LocalizationManager.Instance}, Path=Strings[Lbl_Language_Interface], Mode=OneWay}" 
-                                       Foreground="{DynamicResource MutedBrush}" FontSize="12" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                       Foreground="{StaticResource MutedBrush}" FontSize="12" VerticalAlignment="Center" Margin="0,0,8,0"/>
                             <ComboBox x:Name="languageSelector" Width="110" Height="26" Padding="8,4"
-                                      VerticalAlignment="Center" SelectionChanged="LanguageSelector_SelectionChanged"
-                                      Style="{StaticResource ThemedComboBox}">
+                                      VerticalAlignment="Center" SelectionChanged="LanguageSelector_SelectionChanged">
                                 <ComboBoxItem Content="English" Tag="en"/>
                                 <ComboBoxItem Content="Tiếng Việt" Tag="vi"/>
                                 <ComboBoxItem Content="中文" Tag="zh_cn"/>
@@ -1081,18 +1069,18 @@
                                 <ComboBoxItem Content="Русский" Tag="ru"/>
                             </ComboBox>
 
-                            <TextBlock Text="|" Foreground="{DynamicResource BorderBrush}" Margin="16,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="|" Foreground="{StaticResource BorderBrush}" Margin="16,0" VerticalAlignment="Center"/>
 
                             <TextBlock Text="{Binding Source={x:Static local:LocalizationManager.Instance}, Path=Strings[Lbl_Author], Mode=OneWay}" 
-                                       Foreground="{DynamicResource MutedBrush}" FontSize="12" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                            <TextBlock Text="Thanh Pham" Foreground="{DynamicResource TextBrush}" FontSize="12" VerticalAlignment="Center"/>
+                                       Foreground="{StaticResource MutedBrush}" FontSize="12" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                            <TextBlock Text="Thanh Pham" Foreground="{StaticResource TextBrush}" FontSize="12" VerticalAlignment="Center"/>
 
-                            <TextBlock Text="|" Foreground="{DynamicResource BorderBrush}" Margin="16,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="|" Foreground="{StaticResource BorderBrush}" Margin="16,0" VerticalAlignment="Center"/>
 
                             <TextBlock Text="{Binding Source={x:Static local:LocalizationManager.Instance}, Path=Strings[Lbl_Email], Mode=OneWay}" 
-                                       Foreground="{DynamicResource MutedBrush}" FontSize="12" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                            <TextBlock Text="thanhct1507@gmail.com" Foreground="{DynamicResource TextBrush}" FontSize="12" VerticalAlignment="Center"/>
-                            <TextBlock Text="|" Foreground="{DynamicResource BorderBrush}" Margin="16,0" VerticalAlignment="Center"/>
+                                       Foreground="{StaticResource MutedBrush}" FontSize="12" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                            <TextBlock Text="thanhct1507@gmail.com" Foreground="{StaticResource TextBrush}" FontSize="12" VerticalAlignment="Center"/>
+                            <TextBlock Text="|" Foreground="{StaticResource BorderBrush}" Margin="16,0" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Grid>
                 </Border>
