@@ -212,51 +212,34 @@ namespace RSTGameTranslation
 
                 processor = processorBuilder.Build();
 
-                // Create STT log file
-                try
-                {
-                    Directory.CreateDirectory(Path.GetDirectoryName(sttLogPath) ?? "");
-                    if (sttLogWriter != null) sttLogWriter.Close();
-                    sttLogWriter = new StreamWriter(sttLogPath, true) { AutoFlush = true };
-                    sttLogWriter.WriteLine($"\n=== STT Session Started: {DateTime.Now:yyyy-MM-dd HH:mm:ss} ===");
-                    captureEventCount = 0;
-                }
-                catch (Exception exLog)
-                {
-                    Console.WriteLine($"Warning: Could not open STT log file: {exLog.Message}");
-                }
+                deviceEnumerator = new MMDeviceEnumerator();
+                var devices = deviceEnumerator.EnumerateAudioEndPoints(DataFlow.Render, DeviceState.Active);
 
-                // Initialize audio capture based on mode (loopback or microphone)
-                string captureMode = ConfigManager.Instance.GetAudioCaptureMode().ToLower();
-                Console.WriteLine($"[Whisper] Audio capture mode: {captureMode}");
+                Console.WriteLine("=== Available Audio Devices ===");
+                foreach (var device in devices)
+                {
+                    Console.WriteLine($"Device: {device.FriendlyName}");
+                }
+                var defaultDevice = deviceEnumerator.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
+                Console.WriteLine($"Using default device: {defaultDevice.FriendlyName}");
+
+                loopbackCapture = new WasapiLoopbackCapture(defaultDevice);
+                // debugWriter = new WaveFileWriter("debug_audio_raw.wav", loopbackCapture.WaveFormat);
+                bufferedProvider = new BufferedWaveProvider(loopbackCapture.WaveFormat);
+                bufferedProvider.DiscardOnBufferOverflow = true;
+
+                // Build pipeline: Buffered -> Sample -> Resample (16k) -> Mono
+                var sampleProvider = bufferedProvider.ToSampleProvider();
+                var resampler = new WdlResamplingSampleProvider(sampleProvider, 16000);
+                bufferedProvider.BufferDuration = TimeSpan.FromSeconds(60);
+                processedProvider = resampler.ToMono();
+
+                // Setup debug writer for 16k 16bit mono
+                var targetFormat = new WaveFormat(16000, 16, 1);
+                // debugWriterProcessed = new WaveFileWriter("debug_audio_16k.wav", targetFormat);
                 
-                if (captureMode == "microphone")
-                {
-                    // Microphone mode - capture from input device
-                    try
-                    {
-                        await InitializeMicrophoneCaptureAsync();
-                    }
-                    catch (Exception exMic)
-                    {
-                        Console.WriteLine($"[Whisper] WaveIn microphone init failed: {exMic.Message}");
-                        Console.WriteLine("[Whisper] Trying Wasapi (capture) fallback for microphone devices...");
-                        try
-                        {
-                            await InitializeMicrophoneWasapiCaptureAsync();
-                        }
-                        catch (Exception exWasapi)
-                        {
-                            Console.WriteLine($"[Whisper] Wasapi microphone fallback failed: {exWasapi.Message}");
-                            throw; // let outer catch handle and stop service
-                        }
-                    }
-                }
-                else
-                {
-                    // Loopback mode (default) - capture from speaker output
-                    await InitializeLoopbackCaptureAsync();
-                }
+                loopbackCapture.DataAvailable += OnGameAudioReceived;
+                loopbackCapture.StartRecording();
 
                 _cancellationTokenSource = new CancellationTokenSource();
                 processingTask = Task.Run(() => ProcessLoop(onResult, _cancellationTokenSource.Token));

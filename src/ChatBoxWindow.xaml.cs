@@ -15,6 +15,7 @@ using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using System.Media;
 using System.Collections.Concurrent;
+using System.Runtime.InteropServices;
 using Color = System.Windows.Media.Color;
 using Colors = System.Windows.Media.Colors;
 using FontFamily = System.Windows.Media.FontFamily;
@@ -27,6 +28,46 @@ namespace RSTGameTranslation
 {
     public partial class ChatBoxWindow : Window
     {
+        // Windows API imports for click-through functionality
+        [DllImport("user32.dll")]
+        private static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
+
+        [DllImport("user32.dll")]
+        private static extern int GetWindowLong(IntPtr hWnd, int nIndex);
+
+        [DllImport("user32.dll")]
+        private static extern bool SetLayeredWindowAttributes(IntPtr hWnd, uint crKey, byte bAlpha, uint dwFlags);
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr GetDC(IntPtr hWnd);
+
+        [DllImport("user32.dll")]
+        private static extern int ReleaseDC(IntPtr hWnd, IntPtr hDC);
+
+        [DllImport("gdi32.dll")]
+        private static extern IntPtr CreateCompatibleDC(IntPtr hDC);
+
+        [DllImport("gdi32.dll")]
+        private static extern bool DeleteDC(IntPtr hDC);
+
+        [DllImport("gdi32.dll")]
+        private static extern IntPtr SelectObject(IntPtr hDC, IntPtr hObject);
+
+        [DllImport("gdi32.dll")]
+        private static extern bool DeleteObject(IntPtr hObject);
+
+        [DllImport("gdi32.dll", EntryPoint = "CreateRectRgn")]
+        private static extern IntPtr CreateRectRgnDirect(int x1, int y1, int x2, int y2);
+
+        [DllImport("gdi32.dll")]
+        private static extern IntPtr CreateEllipticRgn(int x1, int y1, int x2, int y2);
+
+        [DllImport("gdi32.dll")]
+        private static extern int CombineRgn(IntPtr hrgnDest, IntPtr hrgnSrc1, IntPtr hrgnSrc2, int fnCombineMode);
+
+        [DllImport("user32.dll")]
+        private static extern int SetWindowRgn(IntPtr hWnd, IntPtr hRgn, bool bRedraw);
+
         // Constants
         private const int MAX_CONTEXT_HISTORY_SIZE = 100; // Max entries to keep for context purposes
 
@@ -38,6 +79,10 @@ namespace RSTGameTranslation
 
         // Animation timer for translation status
         private DispatcherTimer? _animationTimer;
+
+        // Auto-clear timer for clearing chatbox after inactivity
+        private DispatcherTimer? _autoClearTimer;
+        private DateTime _lastTranslationTime = DateTime.MinValue;
 
         // Flag used to allow a forced close (different from normal hide-on-close behavior)
         private bool _forceClose = false;
@@ -53,6 +98,11 @@ namespace RSTGameTranslation
         
         // Cancellation token source for speech processing
         private static CancellationTokenSource? _speechCancellationTokenSource;
+
+        // Click-through overlay for toggle button
+        private IntPtr _clickThroughOverlayHandle = IntPtr.Zero;
+        private bool _isClickThroughMode = false;
+        private Window? _clickThroughOverlayWindow = null;
 
         private int _animationStep = 0;
 
@@ -102,6 +152,14 @@ namespace RSTGameTranslation
                 Interval = TimeSpan.FromMilliseconds(300)
             };
             _animationTimer.Tick += AnimationTimer_Tick;
+
+            // Set up auto-clear timer (checks every second)
+            _autoClearTimer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromSeconds(1)
+            };
+            _autoClearTimer.Tick += AutoClearTimer_Tick;
+            _autoClearTimer.Start();
 
             // Subscribe to events
             this.Loaded += ChatBoxWindow_Loaded;
@@ -229,11 +287,11 @@ namespace RSTGameTranslation
                 {
                     // Dequeue and process each item (preserves character-based voice for Local TTS)
                     if (_speechQueue.TryDequeue(out var item) && !cancellationToken.IsCancellationRequested)
-                    {
-                        if (!string.IsNullOrWhiteSpace(item.text))
                         {
+                        if (!string.IsNullOrWhiteSpace(item.text))
+                            {
                             await Speak_Item_InternalAsync(item.text, cancellationToken, item.characterName);
-                        }
+                    }
                     }
                 }
             }
@@ -412,6 +470,9 @@ namespace RSTGameTranslation
                 // Stop animation timer
                 try { _animationTimer?.Stop(); } catch { }
 
+                // Stop auto-clear timer
+                try { _autoClearTimer?.Stop(); } catch { }
+
                 // Cancel any pending speech processing
                 try
                 {
@@ -423,6 +484,9 @@ namespace RSTGameTranslation
 
                 // Unsubscribe from Logic events
                 try { Logic.Instance.TranslationCompleted -= OnTranslationCompleted; } catch { }
+
+                // Cleanup click-through overlay
+                CleanupClickThroughOverlay();
 
                 // Clear the static Instance reference so a new one can be created
                 Instance = null;
@@ -628,6 +692,168 @@ namespace RSTGameTranslation
 
             // Add SizeChanged event handler for reflowing text when window is resized
             this.SizeChanged += ChatBoxWindow_SizeChanged;
+
+            // Create the click-through overlay window for the toggle button
+            CreateClickThroughOverlay();
+        }
+
+        /// <summary>
+        /// Creates a transparent overlay window for the toggle button that remains clickable
+        /// even when the main chatbox window is in click-through mode
+        /// </summary>
+        private void CreateClickThroughOverlay()
+        {
+            // Create a transparent window that will sit on top of the toggle button
+            _clickThroughOverlayWindow = new Window
+            {
+                WindowStyle = WindowStyle.None,
+                ResizeMode = ResizeMode.NoResize,
+                AllowsTransparency = true,
+                ShowInTaskbar = false,
+                Topmost = true,
+                Background = Brushes.Transparent,
+                Width = 24,
+                Height = 24,
+                ShowActivated = false
+            };
+
+            // Add click handler to the overlay window (not needed with SetWindowRgn but kept for visual toggle)
+            _clickThroughOverlayWindow.MouseLeftButtonDown += (s, e) =>
+            {
+                // When clicked, toggle the borders
+                ToggleBordersButton_Click(this, e);
+                e.Handled = true;
+            };
+
+            // Position the overlay over the toggle button
+            UpdateOverlayPosition();
+
+            // Subscribe to position changes to keep overlay synced
+            this.LocationChanged += (s, args) => UpdateOverlayPosition();
+            this.StateChanged += (s, args) => UpdateOverlayPosition();
+        }
+
+        /// <summary>
+        /// Updates the overlay window position to match the toggle button position
+        /// </summary>
+        private void UpdateOverlayPosition()
+        {
+            if (_clickThroughOverlayWindow == null || toggleBordersButton == null)
+                return;
+
+            try
+            {
+                // Get the toggle button's position in screen coordinates
+                var buttonTransform = toggleBordersButton.TransformToAncestor(this);
+                var buttonLocation = buttonTransform.Transform(new System.Windows.Point(0, 0));
+                var buttonSize = new System.Windows.Size(toggleBordersButton.ActualWidth, toggleBordersButton.ActualHeight);
+
+                // Position the overlay window
+                _clickThroughOverlayWindow.Left = this.Left + buttonLocation.X - 2;
+                _clickThroughOverlayWindow.Top = this.Top + buttonLocation.Y - 2;
+                _clickThroughOverlayWindow.Width = buttonSize.Width + 4;
+                _clickThroughOverlayWindow.Height = buttonSize.Height + 4;
+
+                // If in click-through mode, update the window region too
+                if (_isClickThroughMode)
+                {
+                    var windowInterop = new System.Windows.Interop.WindowInteropHelper(this);
+                    IntPtr hWnd = windowInterop.Handle;
+                    if (hWnd != IntPtr.Zero)
+                    {
+                        int left = (int)(buttonLocation.X - 2);
+                        int top = (int)(buttonLocation.Y - 2);
+                        int right = (int)(left + buttonSize.Width + 4);
+                        int bottom = (int)(top + buttonSize.Height + 4);
+
+                        IntPtr toggleRgn = CreateRectRgnDirect(left, top, right, bottom);
+                        SetWindowRgn(hWnd, toggleRgn, true);
+                    }
+                }
+            }
+            catch
+            {
+                // Ignore positioning errors
+            }
+        }
+
+        /// <summary>
+        /// Enables click-through mode - clicks pass through the window except for the toggle button area
+        /// </summary>
+        private void EnableClickThroughMode()
+        {
+            if (_isClickThroughMode)
+                return;
+
+            _isClickThroughMode = true;
+
+            // Get the window handle
+            var windowInterop = new System.Windows.Interop.WindowInteropHelper(this);
+            IntPtr hWnd = windowInterop.Handle;
+
+            if (hWnd != IntPtr.Zero)
+            {
+                // Create a rectangular region for just the toggle button area
+                // Get toggle button position in screen coordinates
+                var buttonTransform = toggleBordersButton.TransformToAncestor(this);
+                var buttonLocation = buttonTransform.Transform(new System.Windows.Point(0, 0));
+                var buttonSize = new System.Windows.Size(toggleBordersButton.ActualWidth, toggleBordersButton.ActualHeight);
+
+                int left = (int)(buttonLocation.X - 2);
+                int top = (int)(buttonLocation.Y - 2);
+                int right = (int)(left + buttonSize.Width + 4);
+                int bottom = (int)(top + buttonSize.Height + 4);
+
+                // Create region for just the toggle button area
+                        IntPtr toggleRgn = CreateRectRgnDirect(left, top, right, bottom);
+
+                // Set the window region - only this area will receive clicks
+                SetWindowRgn(hWnd, toggleRgn, true);
+            }
+
+            // Show the overlay window for visual feedback (transparent)
+            if (_clickThroughOverlayWindow != null)
+            {
+                _clickThroughOverlayWindow.Show();
+                UpdateOverlayPosition();
+            }
+        }
+
+        /// <summary>
+        /// Disables click-through mode - normal window interaction
+        /// </summary>
+        private void DisableClickThroughMode()
+        {
+            if (!_isClickThroughMode)
+                return;
+
+            _isClickThroughMode = false;
+
+            // Get the window handle
+            var windowInterop = new System.Windows.Interop.WindowInteropHelper(this);
+            IntPtr hWnd = windowInterop.Handle;
+
+            if (hWnd != IntPtr.Zero)
+            {
+                // Remove the region - full window is clickable again
+                SetWindowRgn(hWnd, IntPtr.Zero, true);
+            }
+
+            // Hide the overlay window
+            _clickThroughOverlayWindow?.Hide();
+        }
+
+        /// <summary>
+        /// Cleanup the click-through overlay window
+        /// </summary>
+        private void CleanupClickThroughOverlay()
+        {
+            if (_clickThroughOverlayWindow != null)
+            {
+                _clickThroughOverlayWindow.Close();
+                _clickThroughOverlayWindow = null;
+            }
+            _clickThroughOverlayHandle = IntPtr.Zero;
         }
 
         // Handler for application-level keyboard shortcuts
@@ -666,7 +892,10 @@ namespace RSTGameTranslation
                 }
                 
                 // Clear the speech queue
-                while (_speechQueue.TryDequeue(out _)) { }
+                while (_speechQueue.TryDequeue(out _))
+                {
+                    // Just dequeue to clear
+                }
                 
                 _isProcessingSpeech = false;
                 
@@ -813,6 +1042,9 @@ namespace RSTGameTranslation
             // Hide translation status indicator if it was visible
             HideTranslationStatus();
 
+            // Reset the auto-clear timer since we have a new translation
+            ResetAutoClearTimer();
+
             // Update UI with existing history
             UpdateChatHistory();
             if (fromClipboard)
@@ -822,7 +1054,7 @@ namespace RSTGameTranslation
                     string[] text = translatedText.Split(':', 2);
                     if (text.Length > 1)
                     {
-                        EnqueueSpeechRequest(text[1].Trim(), text[0].Trim());
+                        EnqueueSpeechRequest(text[1]);
                     }
                     else
                     {
@@ -847,7 +1079,7 @@ namespace RSTGameTranslation
                         string[] text = translatedText.Split(':', 2);
                         if (text.Length > 1)
                         {
-                            EnqueueSpeechRequest(text[1].Trim(), text[0].Trim());
+                            EnqueueSpeechRequest(text[1]);
                         }
                         else
                         {
@@ -893,6 +1125,46 @@ namespace RSTGameTranslation
                         break;
                 }
             }
+        }
+
+        // Auto-clear timer tick - clears chatbox after inactivity
+        private void AutoClearTimer_Tick(object? sender, EventArgs e)
+        {
+            int timeout = ConfigManager.Instance.GetAutoClearChatTimeout();
+
+            // If timeout is 0 or disabled, don't auto-clear
+            if (timeout <= 0)
+                return;
+
+            // If no translations yet, don't clear
+            if (_lastTranslationTime == DateTime.MinValue)
+                return;
+
+            // Check if enough time has passed since last translation
+            TimeSpan elapsed = DateTime.Now - _lastTranslationTime;
+            if (elapsed.TotalSeconds >= timeout)
+            {
+                // Clear the chatbox
+                ClearChatboxInternal();
+            }
+        }
+
+        // Internal method to clear chatbox (used by both button click and auto-clear timer)
+        private void ClearChatboxInternal()
+        {
+            // Clear the translation history queue in MainWindow
+            MainWindow.Instance.ClearTranslationHistory();
+
+            // Update the UI to show empty history
+            UpdateChatHistory();
+
+            Console.WriteLine("Chatbox auto-cleared due to inactivity");
+        }
+
+        // Reset the auto-clear timer (called when new translation is added)
+        private void ResetAutoClearTimer()
+        {
+            _lastTranslationTime = DateTime.Now;
         }
 
         // Show translation status indicator with animation
@@ -1086,6 +1358,9 @@ namespace RSTGameTranslation
                 resizeGrip.IsHitTestVisible = true;
                 resizeGrip.Visibility = Visibility.Visible;
                 this.ResizeMode = ResizeMode.CanResizeWithGrip;
+
+                // Disable click-through mode
+                DisableClickThroughMode();
             }
             else
             {
@@ -1108,6 +1383,9 @@ namespace RSTGameTranslation
                 resizeGrip.IsHitTestVisible = false;
                 resizeGrip.Visibility = Visibility.Collapsed;
                 this.ResizeMode = ResizeMode.NoResize;
+
+                // Enable click-through mode
+                EnableClickThroughMode();
             }
         }
 

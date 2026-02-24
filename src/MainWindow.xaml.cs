@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -1442,7 +1442,6 @@ namespace RSTGameTranslation
                     WindowsTTSService.StopAllTTS();
                     GoogleTTSService.StopAllTTS();
                     ElevenLabsService.StopAllTTS();
-                    LocalTtsService.StopAllTTS();
                 }
                 ShowFastNotification(LocalizationManager.Instance.Strings["NotificationTitle_TranslationStopped"], LocalizationManager.Instance.Strings["NotificationMessage_TranslationStopped_Details"]);
                 StartStatusEllipse.Fill = new SolidColorBrush(Color.FromRgb(239, 68, 68)); // Red
@@ -1738,6 +1737,15 @@ namespace RSTGameTranslation
                 if (hasSelectedTranslationArea && currentAreaIndex >= 0 && currentAreaIndex < savedTranslationAreas.Count)
                 {
                     var selectedArea = savedTranslationAreas[currentAreaIndex];
+                    
+                    DpiHelper.GetCurrentScreenDpi(out double currentDpiX, out double currentDpiY);
+                    if (Math.Abs(selectedArea.DpiScaleX - currentDpiX) > 0.01 || Math.Abs(selectedArea.DpiScaleY - currentDpiY) > 0.01)
+                    {
+                        Console.WriteLine($"WARNING: DPI mismatch detected! Area was captured at DPI {selectedArea.DpiScaleX:F2}x/{selectedArea.DpiScaleY:F2}y, current DPI is {currentDpiX:F2}x/{currentDpiY:F2}y");
+                        double adjustScaleX = currentDpiX / selectedArea.DpiScaleX;
+                        double adjustScaleY = currentDpiY / selectedArea.DpiScaleY;
+                        Console.WriteLine($"Adjusting coordinates by scale: {adjustScaleX:F2}x/{adjustScaleY:F2}y");
+                    }
 
                     DpiHelper.GetCurrentScreenDpi(out double currentDpiX, out double currentDpiY);
                     if (Math.Abs(selectedArea.DpiScaleX - currentDpiX) > 0.01 || Math.Abs(selectedArea.DpiScaleY - currentDpiY) > 0.01)
@@ -1938,6 +1946,7 @@ namespace RSTGameTranslation
                                 // captureRect is already in screen coordinates from UpdateCaptureRect()
                                 double windowLeft = captureRect.Left;
                                 double windowTop = captureRect.Top;
+<<<<<<< HEAD
 
                                 Console.WriteLine($"Exclude mask: Using captureRect for conversion: ({windowLeft}, {windowTop})");
 
@@ -2025,6 +2034,89 @@ namespace RSTGameTranslation
                                 //     string sourceLanguage = (sourceLanguageComboBox?.SelectedItem as ComboBoxItem)?.Content?.ToString()!;
                                 //     Logic.Instance.ProcessWithWindowsOCRIntegration(bitmap, sourceLanguage, outputPath);
                                 // }
+                                    else if (ocrMethod == "OneOCR")
+                                    {
+                                        string sourceLanguage = (sourceLanguageComboBox?.SelectedItem as ComboBoxItem)?.Content?.ToString()!;
+                                        Logic.Instance.ProcessWithOneOCR(bitmap, sourceLanguage);
+                                    }
+                                    else
+                                    {
+                                        Logic.Instance.SendImageToServerOCR(outputPath);
+                                    }
+                                {
+                                    double offsetX = region.X - windowLeft;
+                                    double offsetY = region.Y - windowTop;
+                                    Rect adjusted = new Rect(offsetX, offsetY, region.Width, region.Height);
+                                    bitmapAdjustedRegions.Add(adjusted);
+                                }
+
+                                using (Bitmap maskedBitmap = ApplyExcludeRegionsMask(bitmap, bitmapAdjustedRegions))
+                                {
+                                    // Save the masked bitmap
+                                    maskedBitmap.Save(outputPath, ImageFormat.Png);
+
+                                    if (MonitorWindow.Instance.IsVisible)
+                                    {
+                                        MonitorWindow.Instance.UpdateScreenshotFromBitmap();
+                                    }
+
+                                    bool shouldPerformOcr = GetIsStarted() && GetOCRCheckIsWanted() &&
+                                        (!isStopOCR || ConfigManager.Instance.IsAutoOCREnabled());
+
+                                    if (shouldPerformOcr)
+                                    {
+                                        Stopwatch stopwatch = new Stopwatch();
+                                        stopwatch.Start();
+
+                                        SetOCRCheckIsWanted(false);
+
+                                        string ocrMethod = GetSelectedOcrMethod();
+                                        if (ocrMethod == "Windows OCR")
+                                        {
+                                            string sourceLanguage = (sourceLanguageComboBox?.SelectedItem as ComboBoxItem)?.Content?.ToString()!;
+                                            Logic.Instance.ProcessWithWindowsOCR(maskedBitmap, sourceLanguage);
+                                        }
+                                        else if (ocrMethod == "OneOCR")
+                                        {
+                                            string sourceLanguage = (sourceLanguageComboBox?.SelectedItem as ComboBoxItem)?.Content?.ToString()!;
+                                            Logic.Instance.ProcessWithOneOCR(maskedBitmap, sourceLanguage);
+                                        }
+                                        else
+                                        {
+                                            Logic.Instance.SendImageToServerOCR(outputPath);
+                                        }
+
+                                        stopwatch.Stop();
+                                        Console.WriteLine($"OCR processing completed in {stopwatch.ElapsedMilliseconds}ms");
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                // No exclude regions - original behavior
+                                bitmap.Save(outputPath, ImageFormat.Png);
+
+                                if (MonitorWindow.Instance.IsVisible)
+                                {
+                                    MonitorWindow.Instance.UpdateScreenshotFromBitmap();
+                                }
+
+                                bool shouldPerformOcr = GetIsStarted() && GetOCRCheckIsWanted() &&
+                                    (!isStopOCR || ConfigManager.Instance.IsAutoOCREnabled());
+
+                                if (shouldPerformOcr)
+                                {
+                                    Stopwatch stopwatch = new Stopwatch();
+                                    stopwatch.Start();
+
+                                    SetOCRCheckIsWanted(false);
+
+                                    string ocrMethod = GetSelectedOcrMethod();
+                                    if (ocrMethod == "Windows OCR")
+                                    {
+                                        string sourceLanguage = (sourceLanguageComboBox?.SelectedItem as ComboBoxItem)?.Content?.ToString()!;
+                                        Logic.Instance.ProcessWithWindowsOCR(bitmap, sourceLanguage);
+                                    }
                                     else if (ocrMethod == "OneOCR")
                                     {
                                         string sourceLanguage = (sourceLanguageComboBox?.SelectedItem as ComboBoxItem)?.Content?.ToString()!;
@@ -2392,30 +2484,38 @@ namespace RSTGameTranslation
                         OCRStatusEllipse.Fill = new SolidColorBrush(Color.FromRgb(239, 68, 68)); // Red
                         OCRStatusText.Text = LocalizationManager.Instance.Strings["Btn_Off"];
 
-                        _ = OcrServerManager.Instance.StartOcrServerAsync(ocrMethod);
-                        while (!OcrServerManager.Instance.serverStarted)
+                        bool started = await OcrServerManager.Instance.StartOcrServerAsync(ocrMethod);
+
+                        if (!started || !OcrServerManager.Instance.serverStarted)
                         {
-                            await Task.Delay(100);
+                            SetStatus(string.Format(LocalizationManager.Instance.Strings["Status_CannotStartOcrServer"], ocrMethod));
+                            OCRStatusEllipse.Fill = new SolidColorBrush(Color.FromRgb(239, 68, 68)); // Red
+                            OCRStatusText.Text = LocalizationManager.Instance.Strings["Btn_Off"];
+
                             if (OcrServerManager.Instance.timeoutStartServer)
                             {
-                                SetStatus(string.Format(LocalizationManager.Instance.Strings["Status_CannotStartOcrServer"], ocrMethod));
                                 System.Windows.MessageBox.Show(
                                     string.Format(LocalizationManager.Instance.Strings["Msg_ServerStartupTimeoutShort"], ocrMethod),
                                     LocalizationManager.Instance.Strings["Title_Error"],
                                     MessageBoxButton.OK,
                                     MessageBoxImage.Error);
-                                break;
                             }
-                        }
-                        if (OcrServerManager.Instance.serverStarted)
-                        {
-                            _ = SocketManager.Instance.TryReconnectAsync();
-                            SetStatus(string.Format(LocalizationManager.Instance.Strings["Status_ConnectedToServer"], ocrMethod));
-
                         }
                         else
                         {
-                            SetStatus(string.Format(LocalizationManager.Instance.Strings["Status_CannotConnectToServer"], ocrMethod));
+                            bool connected = await SocketManager.Instance.TryReconnectAsync();
+                            if (connected)
+                            {
+                                SetStatus(string.Format(LocalizationManager.Instance.Strings["Status_ConnectedToServer"], ocrMethod));
+                                OCRStatusEllipse.Fill = new SolidColorBrush(Color.FromRgb(69, 176, 105)); // Green
+                                OCRStatusText.Text = LocalizationManager.Instance.Strings["Btn_On"];
+                            }
+                            else
+                            {
+                                SetStatus(string.Format(LocalizationManager.Instance.Strings["Status_CannotConnectToServer"], ocrMethod));
+                                OCRStatusEllipse.Fill = new SolidColorBrush(Color.FromRgb(239, 68, 68)); // Red
+                                OCRStatusText.Text = LocalizationManager.Instance.Strings["Btn_Off"];
+                            }
                         }
                     }
                 }
@@ -3272,39 +3372,39 @@ namespace RSTGameTranslation
                 SetStatus(string.Format(LocalizationManager.Instance.Strings["Status_StartingOcrServer"], ocrMethod));
 
                 // Start the OCR server
-                await OcrServerManager.Instance.StartOcrServerAsync(ocrMethod);
-                SetStatus(string.Format(LocalizationManager.Instance.Strings["Status_StartingOcrServer"], ocrMethod));
-                var startTime = DateTime.Now;
-                while (!OcrServerManager.Instance.serverStarted)
+                bool started = await OcrServerManager.Instance.StartOcrServerAsync(ocrMethod);
+
+                if (!started || !OcrServerManager.Instance.serverStarted)
                 {
-                    await Task.Delay(100);
+                    SetStatus(string.Format(LocalizationManager.Instance.Strings["Status_CannotStartOcrServer"], ocrMethod));
+
                     if (OcrServerManager.Instance.timeoutStartServer)
                     {
-                        SetStatus(string.Format(LocalizationManager.Instance.Strings["Status_CannotStartOcrServer"], ocrMethod));
                         System.Windows.MessageBox.Show(
                             string.Format(LocalizationManager.Instance.Strings["Msg_ServerStartupTimeout"], ocrMethod),
                             LocalizationManager.Instance.Strings["Title_Error"],
                             MessageBoxButton.OK,
                             MessageBoxImage.Error);
-                        break;
                     }
-                }
-
-
-
-                if (OcrServerManager.Instance.serverStarted)
-                {
-                    UpdateServerButtonStatus(OcrServerManager.Instance.serverStarted);
-                    // Update socket status
-                    await SocketManager.Instance.TryReconnectAsync();
-                    OCRStatusEllipse.Fill = new SolidColorBrush(Color.FromRgb(69, 176, 105)); // Green
-                    OCRStatusText.Text = LocalizationManager.Instance.Strings["Btn_On"];
                 }
                 else
                 {
-                    OcrServerManager.Instance.StopOcrServer();
-                    OCRStatusEllipse.Fill = new SolidColorBrush(Color.FromRgb(239, 68, 68)); // Red
-                    OCRStatusText.Text = LocalizationManager.Instance.Strings["Btn_Off"];
+                    UpdateServerButtonStatus(OcrServerManager.Instance.serverStarted);
+                    // Update socket status
+                    bool connected = await SocketManager.Instance.TryReconnectAsync();
+
+                    if (connected)
+                    {
+                        SetStatus(string.Format(LocalizationManager.Instance.Strings["Status_ConnectedToServer"], ocrMethod));
+                        OCRStatusEllipse.Fill = new SolidColorBrush(Color.FromRgb(69, 176, 105)); // Green
+                        OCRStatusText.Text = LocalizationManager.Instance.Strings["Btn_On"];
+                    }
+                    else
+                    {
+                        SetStatus(string.Format(LocalizationManager.Instance.Strings["Status_CannotConnectToServer"], ocrMethod));
+                        OCRStatusEllipse.Fill = new SolidColorBrush(Color.FromRgb(239, 68, 68)); // Red
+                        OCRStatusText.Text = LocalizationManager.Instance.Strings["Btn_Off"];
+                    }
                 }
 
             }
@@ -3729,13 +3829,6 @@ namespace RSTGameTranslation
 
             // Update button status
             btnStopOcrServer.IsEnabled = isConnected;
-
-            // Update status text
-            if (isConnected)
-            {
-                string ocrMethod = GetSelectedOcrMethod();
-                SetStatus($"Successfully connected to {ocrMethod} server");
-            }
         }
 
         private void SelectWindowButton_Click(object sender, RoutedEventArgs e)
