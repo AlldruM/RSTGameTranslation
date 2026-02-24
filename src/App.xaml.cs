@@ -1,6 +1,7 @@
-﻿using System;
+using System;
 using System.Diagnostics;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Threading;
@@ -13,14 +14,32 @@ namespace RSTGameTranslation;
 /// </summary>
 public partial class App : Application
 {
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern bool SetDllDirectory(string lpPathName);
+
     private MainWindow? _mainWindow;
 
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
 
-        // Apply theme
-        ThemeManager.ApplyTheme(ConfigManager.Instance.IsDarkModeEnabled());
+        // Add OneOcr folder to DLL search path so oneocr.dll and onnxruntime.dll load when using OneOCR
+        try
+        {
+            string baseDir = AppDomain.CurrentDomain.BaseDirectory;
+            string oneOcrDir = Path.Combine(baseDir, "OneOcr");
+            if (Directory.Exists(oneOcrDir))
+            {
+                if (SetDllDirectory(oneOcrDir))
+                    System.Console.WriteLine("OneOCR DLL path set: " + oneOcrDir);
+                else
+                    System.Console.WriteLine("SetDllDirectory(OneOcr) failed: " + Marshal.GetLastWin32Error());
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Console.WriteLine("OneOCR path setup: " + ex.Message);
+        }
 
         // Set up application-wide keyboard handling
         this.DispatcherUnhandledException += App_DispatcherUnhandledException;

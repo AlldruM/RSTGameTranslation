@@ -25,6 +25,7 @@ namespace RSTGameTranslation
                 "Google Translate" => new GoogleTranslateService(),
                 "Mistral" => new MistralTranslationService(),
                 "Groq" => new GroqTranslationService(),
+                "Grok" => new GrokTranslationService(),
                 "Microsoft" => new MicrosoftLegacyTranslationService(),
                 _ => new GeminiTranslationService() // Default to Gemini if unknown
             };
@@ -47,6 +48,7 @@ namespace RSTGameTranslation
                 "Google Translate" => new GoogleTranslateService(),
                 "Mistral" => new MistralTranslationService(),
                 "Groq" => new GroqTranslationService(),
+                "Grok" => new GrokTranslationService(),
                 "Microsoft" => new MicrosoftLegacyTranslationService(),
                 _ => throw new ArgumentException($"Unknown translation service: {serviceName}")
             };
