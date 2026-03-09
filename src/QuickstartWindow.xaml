@@ -481,6 +481,7 @@
                                             <Button Content="Korean → Vietnamese" Style="{StaticResource NeutralButton}" Margin="5" Padding="8,3" Click="CommonPair_Click" Tag="ko,vi"/>
                                             <Button Content="Chinese → English" Style="{StaticResource NeutralButton}" Margin="5" Padding="8,3" Click="CommonPair_Click" Tag="ch_sim,en"/>
                                             <Button Content="Chinese → Vietnamese" Style="{StaticResource NeutralButton}" Margin="5" Padding="8,3" Click="CommonPair_Click" Tag="ch_sim,vi"/>
+                                            <Button Content="English → Russian" Style="{StaticResource NeutralButton}" Margin="5" Padding="8,3" Click="CommonPair_Click" Tag="en,ru"/>
                                         </WrapPanel>
                                     </StackPanel>
                                 </Border>
@@ -725,6 +726,22 @@
 
                                     <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource MutedBrush}" Margin="0,5,0,0"
                                                Text="{Binding Source={x:Static local:LocalizationManager.Instance}, Path=Strings[Quickstart_Translation_GroqNote]}"/>
+                                </StackPanel>
+
+                                <!-- Grok API Key -->
+                                <StackPanel x:Name="GrokApiKeyPanel" Visibility="Collapsed" Margin="0,0,0,10">
+                                    <TextBlock FontWeight="Bold" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,5"
+                                               Text="{Binding Source={x:Static local:LocalizationManager.Instance}, Path=Strings[Quickstart_Translation_GrokKey]}"/>
+                                    <PasswordBox x:Name="GrokApiKeyPasswordBox" Width="300" HorizontalAlignment="Left" KeyDown="GrokApiKeyPasswordBox_PasswordChanged"/>
+
+                                    <TextBlock FontWeight="Bold" Foreground="{DynamicResource TextBrush}" Margin="0,10,0,5"
+                                               Text="{Binding Source={x:Static local:LocalizationManager.Instance}, Path=Strings[Quickstart_Translation_GrokModel]}"/>
+                                    <ComboBox x:Name="GrokModelComboBox" Width="300" HorizontalAlignment="Left"/>
+
+                                    <Button Content="{Binding Source={x:Static local:LocalizationManager.Instance}, Path=Strings[Quickstart_Translation_GrokKeyBtn]}" Style="{StaticResource NeutralButton}" HorizontalAlignment="Left" Margin="0,10,0,0" Padding="8,3" Click="GetApiKey_Click" Tag="https://console.x.ai/"/>
+
+                                    <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource MutedBrush}" Margin="0,5,0,0"
+                                               Text="{Binding Source={x:Static local:LocalizationManager.Instance}, Path=Strings[Quickstart_Translation_GrokNote]}"/>
                                 </StackPanel>
 
                                 <!-- Mistral API Key -->

@@ -372,6 +372,7 @@ namespace RSTGameTranslation
             ChatGptApiKeyPasswordBox.Password = configManager.GetChatGptApiKey() ?? "";
             GeminiApiKeyPasswordBox.Password = configManager.GetGeminiApiKey() ?? "";
             GroqApiKeyPasswordBox.Password = configManager.GetGroqApiKey() ?? "";
+            GrokApiKeyPasswordBox.Password = configManager.GetGrokApiKey() ?? "";
             MistralApiKeyPasswordBox.Password = configManager.GetMistralApiKey() ?? "";
             // Microsoft
             MicrosoftApiKeyPasswordBox.Password = configManager.GetMicrosoftApiKey() ?? "";
@@ -488,6 +489,7 @@ namespace RSTGameTranslation
             ChatGptApiKeyPanel.Visibility = Visibility.Collapsed;
             GeminiApiKeyPanel.Visibility = Visibility.Collapsed;
             GroqApiKeyPanel.Visibility = Visibility.Collapsed;
+            GrokApiKeyPanel.Visibility = Visibility.Collapsed;
             MistralApiKeyPanel.Visibility = Visibility.Collapsed;
             MicrosoftApiKeyPanel.Visibility = Visibility.Collapsed; // <-- ensure Microsoft panel is hidden by default
             OllamaModelPanel.Visibility = Visibility.Collapsed;
@@ -516,6 +518,10 @@ namespace RSTGameTranslation
                 else if (selectedLower.Contains("groq"))
                 {
                     GroqApiKeyPanel.Visibility = Visibility.Visible;
+                }
+                else if (selectedLower.Contains("grok"))
+                {
+                    GrokApiKeyPanel.Visibility = Visibility.Visible;
                 }
                 else if (selectedLower.Contains("mistral"))
                 {
@@ -605,6 +611,34 @@ namespace RSTGameTranslation
         private void GroqApiKeyPasswordBox_PasswordChanged(object sender, System.Windows.Input.KeyEventArgs e)
         {
             configManager.SetGroqApiKey(GroqApiKeyPasswordBox.Password);
+            if (e.Key == System.Windows.Input.Key.Enter)
+            {
+                if (sender is PasswordBox passwordBox)
+                {
+                    string apiKey = passwordBox.Password.Trim();
+                    string? serviceType = TranslationServiceComboBox.SelectedItem.ToString();
+
+                    if (!string.IsNullOrEmpty(apiKey) && !string.IsNullOrEmpty(serviceType))
+                    {
+                        // Add Api key to list
+                        ConfigManager.Instance.AddApiKey(serviceType, apiKey);
+
+                        // Clear textbox content
+                        passwordBox.Password = "";
+
+                        Console.WriteLine($"Added new API key for {serviceType}");
+
+
+                        System.Windows.MessageBox.Show($"API key added for {serviceType}.", "API Key Added",
+                            MessageBoxButton.OK, MessageBoxImage.Information);
+                    }
+                }
+            }
+        }
+
+        private void GrokApiKeyPasswordBox_PasswordChanged(object sender, System.Windows.Input.KeyEventArgs e)
+        {
+            configManager.SetGrokApiKey(GrokApiKeyPasswordBox.Password);
             if (e.Key == System.Windows.Input.Key.Enter)
             {
                 if (sender is PasswordBox passwordBox)
