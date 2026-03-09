@@ -2664,7 +2664,7 @@ namespace RSTGameTranslation
 
         private void GrokApiLink_Click(object sender, RoutedEventArgs e)
         {
-            OpenUrl("https://docs.x.ai/docs/getting-started");
+            OpenUrl("https://docs.x.ai/");
         }
 
         private void MistralApiLink_Click(object sender, RoutedEventArgs e)
@@ -3149,7 +3149,7 @@ namespace RSTGameTranslation
             {
                 if (grokModelComboBox.SelectedItem is ComboBoxItem selectedItem)
                 {
-                    string model = selectedItem.Content?.ToString() ?? "grok-2-mini";
+                    string model = selectedItem.Content?.ToString() ?? "grok-3";
                     ConfigManager.Instance.SetGrokModel(model);
                     Console.WriteLine($"Grok model set to: {model}");
 

@@ -66,7 +66,7 @@ namespace RSTGameTranslation
                 _httpClient.DefaultRequestHeaders.Clear();
                 _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
 
-                const string url = "https://api.x.ai/v1/chat/completions";
+                const string url = "https://docs.x.ai/";
                 HttpResponseMessage response = await _httpClient.PostAsync(url, content);
 
                 string responseContent = await response.Content.ReadAsStringAsync();

@@ -859,7 +859,7 @@
                                             HorizontalAlignment="Left" Width="70" Click="SaveApiKeysButton_Click" />
                                     <TextBlock x:Name="grokApiKeyHelpText" Grid.Row="2" TextWrapping="Wrap" Margin="0,2,0,5" FontSize="11">
                                         <Run>Get API key from </Run>
-                                        <Hyperlink Click="GrokApiLink_Click">https://docs.x.ai/docs/getting-started</Hyperlink>
+                                        <Hyperlink Click="GrokApiLink_Click">https://docs.x.ai/</Hyperlink>
                                     </TextBlock>
                                 </Grid>
 
@@ -982,9 +982,9 @@
                                             SelectionChanged="GrokModelComboBox_SelectionChanged"
                                             LostFocus="GrokModelComboBox_LostFocus"
                                             IsEditable="True">
-                                        <ComboBoxItem Content="grok-2-mini"/>
-                                        <ComboBoxItem Content="grok-2"/>
-                                        <ComboBoxItem Content="grok-2-latest"/>
+                                        <ComboBoxItem Content="grok-3"/>
+                                        <ComboBoxItem Content="grok-3-mini"/>
+                                        <ComboBoxItem Content="grok-4-1-fast-reasoning"/>
                                     </ComboBox>
                                     <Button x:Name="viewGrokModelsButton" Content="{Binding Source={x:Static local:LocalizationManager.Instance}, Path=Strings[Btn_ViewModels]}" Grid.Column="1"
                                            Margin="5,0,0,0" Padding="5,0" Click="GrokApiLink_Click"

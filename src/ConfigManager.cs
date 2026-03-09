@@ -554,7 +554,7 @@ namespace RSTGameTranslation
             _configValues[MISTRAL_API_KEY] = "<your API key here>";
             _configValues[GROQ_MODEL] = "moonshotai/kimi-k2-instruct-0905";
             _configValues[GROQ_API_KEY] = "<your API key here>";
-            _configValues[GROK_MODEL] = "grok-2-mini";
+            _configValues[GROK_MODEL] = "grok-3";
             _configValues[GROK_API_KEY] = "<your API key here>";
             _configValues[GEMINI_MODEL] = "gemini-2.5-flash-lite";
             _configValues[BLOCK_DETECTION_SCALE] = (3.00).ToString(CultureInfo.InvariantCulture);
@@ -2721,7 +2721,7 @@ namespace RSTGameTranslation
         // Get Grok model
         public string GetGrokModel()
         {
-            return GetValue(GROK_MODEL, "grok-2-mini");
+            return GetValue(GROK_MODEL, "grok-3");
         }
 
         // Set Grok model

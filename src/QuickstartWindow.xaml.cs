@@ -330,6 +330,7 @@ namespace RSTGameTranslation
             TranslationServiceComboBox.Items.Add("ChatGPT");
             TranslationServiceComboBox.Items.Add("Gemini");
             TranslationServiceComboBox.Items.Add("Groq");
+            TranslationServiceComboBox.Items.Add("Grok");
             TranslationServiceComboBox.Items.Add("Mistral");
             TranslationServiceComboBox.Items.Add("Ollama");
             TranslationServiceComboBox.Items.Add("LM Studio");
@@ -349,6 +350,9 @@ namespace RSTGameTranslation
                     break;
                 case "groq":
                     TranslationServiceComboBox.SelectedItem = "Groq";
+                    break;
+                case "grok":
+                    TranslationServiceComboBox.SelectedItem = "Grok";
                     break;
                 case "mistral":
                     TranslationServiceComboBox.SelectedItem = "Mistral";
@@ -395,6 +399,12 @@ namespace RSTGameTranslation
             GroqModelComboBox.Items.Add("moonshotai/kimi-k2-instruct-0905");
             GroqModelComboBox.Items.Add("qwen/qwen3-32b");
 
+            // Load Grok models
+            GrokModelComboBox.Items.Clear();
+            GrokModelComboBox.Items.Add("grok-3");
+            GrokModelComboBox.Items.Add("grok-3-mini");
+            GrokModelComboBox.Items.Add("grok-4-1-fast-reasoning");
+
             // Load Mistral models
             MistralModelComboBox.Items.Clear();
             MistralModelComboBox.Items.Add("mistral-medium");
@@ -432,6 +442,17 @@ namespace RSTGameTranslation
             else
             {
                 GroqModelComboBox.SelectedItem = "moonshotai/kimi-k2-instruct-0905";
+            }
+
+            // Set selected Grok model
+            string grokModel = configManager.GetGrokModel();
+            if (!string.IsNullOrEmpty(grokModel))
+            {
+                GrokModelComboBox.SelectedItem = grokModel;
+            }
+            else
+            {
+                GrokModelComboBox.SelectedItem = "grok-4-1-fast-reasoning";
             }
 
             // Set selected  Mistral model
@@ -821,6 +842,9 @@ namespace RSTGameTranslation
                 case "groq":
                     TranslationServiceSummaryText.Text = "Groq";
                     break;
+                case "grok":
+                    TranslationServiceSummaryText.Text = "Grok";
+                    break;
                 case "mistral":
                     TranslationServiceSummaryText.Text = "Mistral";
                     break;
@@ -927,6 +951,10 @@ namespace RSTGameTranslation
             else if (TranslationServiceComboBox.SelectedItem.ToString() == "Groq")
             {
                 configManager.SetGroqModel(GroqModelComboBox.SelectedItem.ToString() ?? "moonshotai/kimi-k2-instruct-0905");
+            }
+            else if (TranslationServiceComboBox.SelectedItem.ToString() == "Grok")
+            {
+                configManager.SetGrokModel(GrokModelComboBox.SelectedItem.ToString() ?? "grok-4-1-fast-reasoning");
             }
             else if (TranslationServiceComboBox.SelectedItem.ToString() == "Mistral")
             {
